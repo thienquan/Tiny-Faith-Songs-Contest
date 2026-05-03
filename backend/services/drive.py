@@ -85,6 +85,96 @@ def create_subfolder(drive, name: str, parent_id: Optional[str] = None) -> dict:
     return folder
 
 
+def _escape_drive_query_string(value: str) -> str:
+    """Escape characters that have special meaning inside a Drive query
+    `name contains '...'` literal. Drive uses backslash-escapes for ' and \\.
+    """
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def find_folder_by_name_part(
+    drive,
+    name_part: str,
+    parent_id: Optional[str] = None,
+) -> Optional[dict]:
+    """Look up an existing subfolder in the Shared Drive parent whose name
+    contains ``name_part`` (case-sensitive substring search via Drive's
+    `name contains` operator).
+
+    Used for the "phone-number is the user's identifier" pattern: subsequent
+    submissions look up the same folder instead of creating a new one.
+
+    Returns the first matching folder dict (id/name/webViewLink) or ``None``.
+
+    Notes
+    -----
+    - ``supportsAllDrives=True`` AND ``includeItemsFromAllDrives=True`` are
+      both required when searching inside a Shared Drive.
+    - We use ``corpora='allDrives'`` so the call works for any Shared Drive
+      without needing the parent driveId up-front.
+    """
+    parent_id = parent_id or get_shared_drive_folder_id()
+    safe = _escape_drive_query_string(name_part)
+    query = (
+        f"'{parent_id}' in parents "
+        f"and mimeType = 'application/vnd.google-apps.folder' "
+        f"and name contains '{safe}' "
+        f"and trashed = false"
+    )
+
+    last_err = None
+    for attempt in range(3):
+        try:
+            response = (
+                drive.files()
+                .list(
+                    q=query,
+                    fields="files(id, name, webViewLink, parents)",
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                    corpora="allDrives",
+                    pageSize=10,
+                    spaces="drive",
+                )
+                .execute()
+            )
+            files = response.get("files", []) or []
+            if not files:
+                return None
+            # Prefer the folder whose name STARTS with the name_part (our
+            # canonical layout `[phone] - [child] - [parent]`).
+            for f in files:
+                if f.get("name", "").startswith(name_part):
+                    logger.info(
+                        "Drive: matched existing folder for '%s' -> %s",
+                        name_part,
+                        f.get("id"),
+                    )
+                    return f
+            logger.info(
+                "Drive: substring match for '%s' (no startswith) -> %s",
+                name_part,
+                files[0].get("id"),
+            )
+            return files[0]
+        except Exception as exc:
+            last_err = exc
+            if _is_retryable(exc) and attempt < 2:
+                wait = 1.5 ** attempt
+                logger.warning(
+                    "find_folder_by_name_part attempt %d failed (%s); retrying in %.1fs",
+                    attempt + 1,
+                    exc,
+                    wait,
+                )
+                time.sleep(wait)
+                continue
+            raise
+    if last_err:
+        raise last_err
+    return None
+
+
 def stream_upload_to_folder(
     drive,
     folder_id: str,

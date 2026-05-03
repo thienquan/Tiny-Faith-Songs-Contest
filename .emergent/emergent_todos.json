@@ -1,42 +1,34 @@
 [
   {
-    "content": "Fix Python `is` -> `==` for literal comparisons (5 locations across email_service, drive, registration)",
-    "status": "completed"
+    "content": "Backend: Add find_folder_by_phone() to services/drive.py (drive.files.list with q + supportsAllDrives + includeItemsFromAllDrives)",
+    "status": "in_progress"
   },
   {
-    "content": "Fix empty catch blocks in i18n-context.jsx (add console.error logging)",
-    "status": "completed"
+    "content": "Backend: Update registration.py — add phone validation + normalize, branch logic (find-or-create folder), new folder name `[phone] - [child] - [parent]`",
+    "status": "pending"
   },
   {
-    "content": "Hoist inline `accent` objects in Prizes.jsx to module-level constants",
-    "status": "completed"
+    "content": "Backend: Update email_service.py — subject changes to `[Cập nhật bài thi] SĐT: {phone} vừa nộp thêm video`, handle first-time vs update",
+    "status": "pending"
   },
   {
-    "content": "Replace array-index React keys with stable identifiers (Timeline, HowTo, Criteria, About)",
-    "status": "completed"
+    "content": "Frontend: Add phone field to i18n dictionary (VI + EN) with hints, update section notes explaining partial submission",
+    "status": "pending"
   },
   {
-    "content": "Replace nested ternary in RegistrationForm submit button with clear if/else",
-    "status": "completed"
+    "content": "Frontend: Update ContactInfoCard + registration-form-utils + use-registration-form hook with phoneNumber state + validation",
+    "status": "pending"
   },
   {
-    "content": "Split email_service: extract build_message + send_message + smaller render helpers",
-    "status": "completed"
+    "content": "Frontend: Update RegistrationSuccessDialog to show different messages for first-time vs update (with songs added this session)",
+    "status": "pending"
   },
   {
-    "content": "Refactor Python register_entry: extract validate_registration, collect_song_inputs, process_song, send_notification_email",
-    "status": "completed"
+    "content": "Update help text: `You can come back later with the same phone number to submit remaining songs`",
+    "status": "pending"
   },
   {
-    "content": "Refactor RegistrationForm: extract useRegistrationForm hook + ContactInfoCard + SongSubmissionCard + SuccessDialog sub-components",
-    "status": "completed"
-  },
-  {
-    "content": "Fix React hook deps + add eslint-disable for intentional empty arrays in i18n-context, Navbar",
-    "status": "completed"
-  },
-  {
-    "content": "Run final E2E backend curl + frontend lint after refactor to confirm no regressions",
-    "status": "completed"
+    "content": "E2E testing: first submission (2 songs) → creates folder, second submission (same phone, 1 song) → reuses folder, email subject is correct",
+    "status": "pending"
   }
 ]

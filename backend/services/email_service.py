@@ -150,6 +150,8 @@ def _format_song_label(song: dict) -> tuple[str, str, str]:
         return "📹 Upload", song.get("file_link") or "", song.get("file_name") or ""
     if kind == "link":
         return "🔗 Link", song.get("doc_link") or "", song.get("submitted_link") or ""
+    if kind == "error":
+        return "❌ Error", "", song.get("error") or ""
     return "—", "", "(skipped)"
 
 
@@ -178,26 +180,48 @@ def _render_song_row_plain(idx: int, song: dict) -> str:
             f"  Song {idx} (link): {song.get('submitted_link') or ''} "
             f"-> {song.get('doc_link') or ''}"
         )
-    return f"  Song {idx}: (skipped)"
+    if kind == "error":
+        return f"  Song {idx} (error): {song.get('error') or ''}"
+    return f"  Song {idx}: (skipped this session)"
+
+
+def _filter_actionable_songs(songs: list) -> list:
+    """Songs that were actually processed in this session (not 'skipped')."""
+    return [s for s in songs if s.get("type") in ("upload", "link", "error")]
 
 
 def _render_html_body(payload: dict) -> str:
     child = escape(payload.get("child_name", "?"))
     parent = escape(payload.get("parent_name", "?"))
     parent_email = escape(payload.get("parent_email", "?"))
+    phone_raw = escape(payload.get("phone_raw") or payload.get("phone") or "")
+    phone = escape(payload.get("phone") or "")
     folder_url = escape(payload.get("folder_url", ""))
     folder_name = escape(payload.get("folder_name", "")) or folder_url
+    is_new = bool(payload.get("is_new_folder"))
     songs = payload.get("song_results", [])
+    actionable = _filter_actionable_songs(songs)
 
-    rows = "".join(_render_song_row_html(i, s) for i, s in enumerate(songs, start=1))
+    rows = "".join(_render_song_row_html(s.get("song", i + 1), s) for i, s in enumerate(actionable))
     if not rows:
-        rows = '<tr><td colspan="4" style="padding:8px 10px; color:#64748b;">(no song uploaded)</td></tr>'
+        rows = (
+            '<tr><td colspan="4" style="padding:8px 10px; color:#64748b;">'
+            "(no song processed in this session)</td></tr>"
+        )
+
+    banner_text = (
+        "🎉 Bài dự thi mới"
+        if is_new
+        else "🔁 Bổ sung bài thi (cập nhật)"
+    )
+    banner_color = "#0369A1" if is_new else "#9A3412"
 
     return f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 720px; margin: 0 auto; color: #0f172a;">
-      <h2 style="color:#0369A1;">🎵 Tiny Faith Songs — Bài dự thi mới</h2>
-      <p>Đã nhận được bài dự thi mới với thông tin sau:</p>
+      <h2 style="color:{banner_color};">{banner_text} — Tiny Faith Songs</h2>
+      <p style="margin:0 0 12px;">Bài dự thi vừa được {('tạo' if is_new else 'cập nhật')} với thông tin sau:</p>
       <table style="border-collapse: collapse; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+        <tr><td style="padding:6px 10px; font-weight:600;">Số điện thoại</td><td style="padding:6px 10px; font-family: ui-monospace, monospace;">{phone}{f' <span style=\"color:#64748b\">(nhập: {phone_raw})</span>' if phone_raw and phone_raw != phone else ''}</td></tr>
         <tr><td style="padding:6px 10px; font-weight:600;">Tên bé</td><td style="padding:6px 10px;">{child}</td></tr>
         <tr><td style="padding:6px 10px; font-weight:600;">Phụ huynh</td><td style="padding:6px 10px;">{parent}</td></tr>
         <tr><td style="padding:6px 10px; font-weight:600;">Email phụ huynh</td><td style="padding:6px 10px;">{parent_email}</td></tr>
@@ -205,7 +229,7 @@ def _render_html_body(payload: dict) -> str:
           <td style="padding:6px 10px;"><a href="{folder_url}" target="_blank" rel="noopener">{folder_name}</a></td>
         </tr>
       </table>
-      <h3 style="margin-top:24px; color:#0f172a;">📂 Danh sách 6 bài hát</h3>
+      <h3 style="margin-top:24px; color:#0f172a;">📂 Bài hát {'đã nộp' if is_new else 'thêm trong lần cập nhật này'} ({len(actionable)})</h3>
       <table style="border-collapse: collapse; width:100%; background:#fff; border:1px solid #e2e8f0; border-radius:8px;">
         <thead style="background:#e0f2fe; color:#0c4a6e;">
           <tr><th style="text-align:left; padding:8px 10px;">#</th><th style="text-align:left; padding:8px 10px;">Loại</th><th style="text-align:left; padding:8px 10px;">Thông tin</th><th style="text-align:left; padding:8px 10px;">Liên kết</th></tr>
@@ -219,26 +243,35 @@ def _render_html_body(payload: dict) -> str:
 
 def _render_plain_body(payload: dict) -> str:
     songs = payload.get("song_results", [])
+    actionable = _filter_actionable_songs(songs)
+    is_new = bool(payload.get("is_new_folder"))
     lines = [
-        "Tiny Faith Songs — New entry",
+        "Tiny Faith Songs — " + ("New entry" if is_new else "Update"),
+        f"Phone: {payload.get('phone', '?')}",
         f"Child: {payload.get('child_name', '?')}",
         f"Parent: {payload.get('parent_name', '?')}",
         f"Email: {payload.get('parent_email', '?')}",
         f"Folder: {payload.get('folder_url', '')}",
         "",
-        "Songs:",
+        f"Songs in this session ({len(actionable)}):",
     ]
-    for i, song in enumerate(songs, start=1):
-        lines.append(_render_song_row_plain(i, song))
+    for s in actionable:
+        lines.append(_render_song_row_plain(s.get("song", 0), s))
     return "\n".join(lines)
 
 
 def render_registration_email(payload: dict, locale: str = "vi") -> tuple[str, str, str]:
-    """Return (subject, html_body, plain_text). `locale` is reserved for
-    future per-language templates (currently bilingual VN/EN inside one body).
+    """Return (subject, html_body, plain_text). The subject distinguishes
+    first-time vs update submissions, as required by the contest organizer.
     """
     _ = locale  # noqa: F841 — reserved for future per-locale subject lines
-    child = payload.get("child_name", "?")
-    parent = payload.get("parent_name", "?")
-    subject = f"[Tiny Faith Songs] New entry: {child} — {parent}"
+    phone = payload.get("phone") or "?"
+    is_new = bool(payload.get("is_new_folder"))
+    if is_new:
+        subject = (
+            f"[Đăng ký mới] SĐT: {phone} — {payload.get('child_name', '?')} "
+            f"vừa đăng ký dự thi"
+        )
+    else:
+        subject = f"[Cập nhật bài thi] SĐT: {phone} vừa nộp thêm video"
     return subject, _render_html_body(payload), _render_plain_body(payload)

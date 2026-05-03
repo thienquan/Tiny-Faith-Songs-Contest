@@ -1,10 +1,29 @@
 """
 Registration API for the Tiny Faith Songs Bible Song Contest.
 
-Receives multipart/form-data with:
+Phone-keyed multi-session flow
+------------------------------
+
+Parents may submit anywhere from 1 to 6 song videos in a single request.
+Phone number is the user's identifier — a parent can come back later, type
+the same phone, and add more songs. Each request:
+
+1. Validates contact fields (child name, parent name, email, phone, consent).
+2. Searches the Shared Drive for an existing subfolder whose name contains
+   the normalized phone (using ``drive.files().list`` with ``q``,
+   ``supportsAllDrives=True`` and ``includeItemsFromAllDrives=True``).
+3. If a folder exists → reuse its ID; otherwise → create a new folder named
+   ``[phone] - [child] - [parent]`` inside the Shared Drive root folder.
+4. Stream-uploads each provided video (resumable, 1 MB chunks → no full-file
+   RAM buffering) or creates a Google Docs file for each pasted link.
+5. Sends an HTML email summarising what was added in this session — the
+   subject line marks first-time vs update submissions.
+
+Multipart/form-data fields received:
   - child_name (str)
   - parent_name (str)
   - parent_email (str)
+  - phone (str)
   - consent (str: 'true')
   - locale (optional, 'vi' | 'en')
   - For each song i in 1..6:
@@ -12,25 +31,12 @@ Receives multipart/form-data with:
       - song_{i}_file (UploadFile)        when mode='upload'
       - song_{i}_link (str)               when mode='link'
 
-Flow:
-  1) Validate inputs.
-  2) Build Drive service (Service Account).
-  3) Create subfolder "<Child> - <Parent>" inside Shared Drive (supportsAllDrives=True).
-  4) For each provided song: stream-upload OR create Google Docs link file.
-  5) Send notification email via SMTP.
-  6) Return JSON with folder URL + per-song results.
-
-The FastAPI UploadFile uses a SpooledTemporaryFile underneath, so reading from
-`upload_file.file` and feeding it to MediaIoBaseUpload (resumable=True, 1MB
-chunks) means we never keep the full file in RAM.
-
-This module is intentionally split into small private helpers to keep the
-top-level handler short and easy to test.
+The handler returns JSON containing the (possibly reused) folder URL plus
+per-song results so the frontend can show a tailored success message.
 """
 
 from __future__ import annotations
 
-import datetime as _dt
 import logging
 import os
 import re
@@ -45,10 +51,15 @@ from services.drive import (
     build_drive_service,
     create_link_doc,
     create_subfolder,
+    find_folder_by_name_part,
     get_shared_drive_folder_id,
     stream_upload_to_folder,
 )
-from services.email_service import admin_email, render_registration_email, send_html_email
+from services.email_service import (
+    admin_email,
+    render_registration_email,
+    send_html_email,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["registration"])
@@ -65,7 +76,34 @@ _LINK_HOST_HINTS = (
 
 
 # ---------------------------------------------------------------------------
-# Input parsing & validation helpers
+# Phone normalization & validation
+# ---------------------------------------------------------------------------
+
+def normalize_phone(value: str) -> str:
+    """Normalize a phone number to its canonical digit-only form.
+
+    Vietnamese phones may be entered as ``0912345678``, ``+84 912 345 678``
+    or ``84 912-345-678``. We strip all non-digit characters, then collapse
+    a leading ``+84`` / ``84`` country code to ``0`` so the same physical
+    number always maps to the same key.
+    """
+    if not value:
+        return ""
+    digits = re.sub(r"\D+", "", value)
+    if digits.startswith("84") and len(digits) >= 11:
+        digits = "0" + digits[2:]
+    return digits
+
+
+def _is_valid_vn_phone(normalized: str) -> bool:
+    """Vietnamese mobile/landline numbers are 10–11 digits starting with 0
+    after normalization. We stay generous (9–12) to support edge cases.
+    """
+    return bool(normalized) and 9 <= len(normalized) <= 12 and normalized.isdigit()
+
+
+# ---------------------------------------------------------------------------
+# Other validation helpers
 # ---------------------------------------------------------------------------
 
 def _safe_name_part(s: str, max_len: int = 60) -> str:
@@ -92,10 +130,11 @@ def _looks_like_upload_file(value: Any) -> bool:
 
 
 def _validate_contact_fields(form) -> dict:
-    """Validate the parent/child/email/consent block. Raises HTTPException on error."""
+    """Validate the parent/child/email/phone/consent block."""
     child_name = (form.get("child_name") or "").strip()
     parent_name = (form.get("parent_name") or "").strip()
     parent_email = (form.get("parent_email") or "").strip()
+    raw_phone = (form.get("phone") or "").strip()
     consent = (form.get("consent") or "").strip().lower()
     locale = (form.get("locale") or "vi").strip().lower()
 
@@ -105,6 +144,11 @@ def _validate_contact_fields(form) -> dict:
         raise HTTPException(status_code=400, detail="parent_name is required")
     if not parent_email or not _EMAIL_RE.match(parent_email):
         raise HTTPException(status_code=400, detail="parent_email is invalid")
+
+    phone = normalize_phone(raw_phone)
+    if not _is_valid_vn_phone(phone):
+        raise HTTPException(status_code=400, detail="phone is invalid")
+
     if consent not in ("true", "1", "yes", "on"):
         raise HTTPException(status_code=400, detail="consent is required")
 
@@ -112,6 +156,8 @@ def _validate_contact_fields(form) -> dict:
         "child_name": child_name,
         "parent_name": parent_name,
         "parent_email": parent_email,
+        "phone": phone,
+        "phone_raw": raw_phone,
         "locale": locale,
     }
 
@@ -142,10 +188,10 @@ def _collect_song_inputs(form) -> list[dict]:
 
 
 def _validate_song_inputs(song_inputs: list[dict]) -> None:
-    """Ensures at least one song was provided and all link values are valid."""
-    provided = [
-        s for s in song_inputs if (s["file"] is not None) or (s["link"] != "")
-    ]
+    """At least one song must be provided in this request, and any link
+    values must point to YouTube or Google Drive.
+    """
+    provided = [s for s in song_inputs if (s["file"] is not None) or (s["link"] != "")]
     if not provided:
         raise HTTPException(status_code=400, detail="At least one song must be submitted")
 
@@ -157,9 +203,47 @@ def _validate_song_inputs(song_inputs: list[dict]) -> None:
             )
 
 
-def _build_folder_name(child_name: str, parent_name: str) -> str:
-    timestamp = _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    return f"{_safe_name_part(child_name)} - {_safe_name_part(parent_name)} ({timestamp})"
+def _build_canonical_folder_name(phone: str, child_name: str, parent_name: str) -> str:
+    """`[phone] - [child] - [parent]` with whitespace normalized."""
+    return (
+        f"{phone} - {_safe_name_part(child_name)} - {_safe_name_part(parent_name)}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Folder resolution (find-or-create)
+# ---------------------------------------------------------------------------
+
+def _resolve_target_folder(
+    drive,
+    phone: str,
+    child_name: str,
+    parent_name: str,
+    parent_folder_id: str,
+) -> tuple[dict, bool]:
+    """Look up an existing folder for this phone in the Shared Drive; create
+    one if it does not exist.
+
+    Returns ``(folder_dict, created)`` where ``created`` is True if we just
+    created the folder, False if we reused an existing one.
+    """
+    try:
+        existing = find_folder_by_name_part(drive, phone, parent_id=parent_folder_id)
+    except Exception as exc:
+        logger.exception("Folder lookup failed")
+        raise HTTPException(status_code=502, detail=f"Could not search Drive: {exc}")
+
+    if existing:
+        logger.info("Reusing existing folder %s for phone %s", existing.get("id"), phone)
+        return existing, False
+
+    folder_name = _build_canonical_folder_name(phone, child_name, parent_name)
+    try:
+        created_folder = create_subfolder(drive, folder_name, parent_id=parent_folder_id)
+    except Exception as exc:
+        logger.exception("Folder creation failed")
+        raise HTTPException(status_code=502, detail=f"Could not create Drive folder: {exc}")
+    return created_folder, True
 
 
 # ---------------------------------------------------------------------------
@@ -215,12 +299,17 @@ def _process_link_song(drive, folder_id: str, song: dict) -> dict:
     }
 
 
-async def _process_song_inputs(drive, folder_id: str, song_inputs: list[dict], request_id: str) -> list[dict]:
+async def _process_song_inputs(
+    drive,
+    folder_id: str,
+    song_inputs: list[dict],
+    request_id: str,
+) -> list[dict]:
     """Process all songs in order, collecting per-song results.
 
-    Always closes UploadFile handles. Per-song failures are recorded but do not
-    abort processing of subsequent songs — we want a partial success rather
-    than losing everything to one transient API blip.
+    Always closes UploadFile handles. Per-song failures are recorded but do
+    not abort processing of subsequent songs — partial success is preferable
+    to losing every song to one transient API error.
     """
     results: list[dict] = []
     for song in song_inputs:
@@ -275,7 +364,11 @@ def _send_registration_email(payload: dict, locale: str) -> dict:
 
 @router.post("/register")
 async def register_entry(request: Request):
-    """Multipart endpoint that handles streaming upload of up to 6 videos and / or links."""
+    """Multipart endpoint that accepts 1..6 video / link submissions.
+
+    Phone number is the unique user identifier — repeat submissions with the
+    same phone are appended to the existing Drive folder.
+    """
 
     form = await request.form()
 
@@ -285,8 +378,9 @@ async def register_entry(request: Request):
 
     request_id = str(uuid.uuid4())[:8]
     logger.info(
-        "[register %s] start child=%s parent=%s email=%s",
+        "[register %s] start phone=%s child=%s parent=%s email=%s",
         request_id,
+        contact["phone"],
         contact["child_name"],
         contact["parent_name"],
         contact["parent_email"],
@@ -298,17 +392,20 @@ async def register_entry(request: Request):
         logger.exception("Failed to build Drive service")
         raise HTTPException(status_code=500, detail=f"Drive auth failed: {exc}")
 
-    folder_name = _build_folder_name(contact["child_name"], contact["parent_name"])
     parent_folder_id = get_shared_drive_folder_id()
-
-    try:
-        folder = create_subfolder(drive, folder_name, parent_id=parent_folder_id)
-    except Exception as exc:
-        logger.exception("Folder creation failed")
-        raise HTTPException(status_code=502, detail=f"Could not create Drive folder: {exc}")
-
+    folder, is_new_folder = _resolve_target_folder(
+        drive,
+        phone=contact["phone"],
+        child_name=contact["child_name"],
+        parent_name=contact["parent_name"],
+        parent_folder_id=parent_folder_id,
+    )
     folder_id = folder["id"]
-    folder_url = folder.get("webViewLink") or f"https://drive.google.com/drive/folders/{folder_id}"
+    folder_name = folder.get("name", "")
+    folder_url = (
+        folder.get("webViewLink")
+        or f"https://drive.google.com/drive/folders/{folder_id}"
+    )
 
     song_results = await _process_song_inputs(drive, folder_id, song_inputs, request_id)
 
@@ -320,17 +417,22 @@ async def register_entry(request: Request):
             "child_name": contact["child_name"],
             "parent_name": contact["parent_name"],
             "parent_email": contact["parent_email"],
+            "phone": contact["phone"],
+            "phone_raw": contact["phone_raw"],
             "folder_url": folder_url,
             "folder_name": folder_name,
             "song_results": song_results,
+            "is_new_folder": is_new_folder,
         },
         locale=contact["locale"],
     )
 
     logger.info(
-        "[register %s] done folder=%s ok=%d failed=%d email=%s",
+        "[register %s] done phone=%s folder=%s new=%s ok=%d failed=%d email=%s",
         request_id,
+        contact["phone"],
         folder_id,
+        is_new_folder,
         len(successful),
         len(failed),
         email_status.get("sent"),
@@ -340,9 +442,11 @@ async def register_entry(request: Request):
         {
             "success": True,
             "request_id": request_id,
+            "phone": contact["phone"],
             "folder_id": folder_id,
             "folder_url": folder_url,
             "folder_name": folder_name,
+            "is_new_folder": is_new_folder,
             "song_results": song_results,
             "successful_count": len(successful),
             "failed_count": len(failed),
@@ -364,4 +468,32 @@ async def health():
         "folder_id": get_shared_drive_folder_id(),
         "smtp_host": os.environ.get("SMTP_HOST", "mail.kinhthanhgotay.com"),
         "admin_email": admin_email(),
+    }
+
+
+@router.get("/lookup")
+async def lookup_phone(phone: Optional[str] = None):
+    """Quick lookup: does this phone already have a folder? Used by the form
+    to show a friendly hint ("Welcome back, you've already submitted N songs").
+    Returns ``{exists: bool, folder_url?, folder_name?}``.
+    """
+    if not phone:
+        return {"exists": False}
+    normalized = normalize_phone(phone)
+    if not _is_valid_vn_phone(normalized):
+        return {"exists": False, "phone": normalized}
+    try:
+        drive = build_drive_service()
+        folder = find_folder_by_name_part(drive, normalized)
+    except Exception as exc:
+        logger.exception("lookup failed")
+        return {"exists": False, "error": str(exc), "phone": normalized}
+    if not folder:
+        return {"exists": False, "phone": normalized}
+    return {
+        "exists": True,
+        "phone": normalized,
+        "folder_id": folder.get("id"),
+        "folder_name": folder.get("name"),
+        "folder_url": folder.get("webViewLink"),
     }
