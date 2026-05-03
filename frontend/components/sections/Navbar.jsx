@@ -20,6 +20,9 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  // Listen to scroll-position changes for the translucent-on-scroll style.
+  // Empty deps array is intentional — set up the listener once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();

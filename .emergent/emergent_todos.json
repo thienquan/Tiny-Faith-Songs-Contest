@@ -1,46 +1,42 @@
 [
   {
-    "content": "Phase 1: Install Python deps (google-api-python-client, google-auth, etc.) + write POC test script for Drive + SMTP",
+    "content": "Fix Python `is` -> `==` for literal comparisons (5 locations across email_service, drive, registration)",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Run POC test until all integrations succeed (Drive folder create, streaming upload, Google Docs link, SMTP email)",
+    "content": "Fix empty catch blocks in i18n-context.jsx (add console.error logging)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Get design guidelines from design_agent (kid-friendly contest landing page)",
+    "content": "Hoist inline `accent` objects in Prizes.jsx to module-level constants",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Replace CRA frontend with Next.js 14 (App Router) + Tailwind + i18n; configure package.json so supervisor `yarn start` runs Next.js",
+    "content": "Replace array-index React keys with stable identifiers (Timeline, HowTo, Criteria, About)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Build landing page sections (Hero, About, Prizes, How-to-join, Criteria, Form, Footer) with all content from info-content.md",
+    "content": "Replace nested ternary in RegistrationForm submit button with clear if/else",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Build language toggle + i18n strings (VI default, EN switch)",
+    "content": "Split email_service: extract build_message + send_message + smaller render helpers",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Build registration form with 6 songs (Upload OR Link toggle), progress bar, validation, consent checkbox",
+    "content": "Refactor Python register_entry: extract validate_registration, collect_song_inputs, process_song, send_notification_email",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Implement FastAPI /api/register with streaming Drive upload + Google Docs creation + SMTP email",
+    "content": "Refactor RegistrationForm: extract useRegistrationForm hook + ContactInfoCard + SongSubmissionCard + SuccessDialog sub-components",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Verified end-to-end (curl mixed mode 6/6 success, email sent, frontend renders, language toggle works)",
+    "content": "Fix React hook deps + add eslint-disable for intentional empty arrays in i18n-context, Navbar",
     "status": "completed"
   },
   {
-    "content": "Phase 3: End-to-end testing with testing_agent_v3 (backend curl + frontend Playwright); fix all bugs",
-    "status": "in_progress"
-  },
-  {
-    "content": "Phase 4: Final polish, replace robot-mascot placeholder when uploaded, deliver",
-    "status": "pending"
+    "content": "Run final E2E backend curl + frontend lint after refactor to confirm no regressions",
+    "status": "completed"
   }
 ]

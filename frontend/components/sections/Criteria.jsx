@@ -38,7 +38,7 @@ export function Criteria() {
             <div className="space-y-4" data-testid="criteria-chart">
               {Array.isArray(items) &&
                 items.map((it, i) => (
-                  <div key={i} className="" data-testid={`criteria-item-${i}`}>
+                  <div key={it.label} className="" data-testid={`criteria-item-${i}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-slate-800">{it.label}</span>
                       <span

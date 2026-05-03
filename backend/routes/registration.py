@@ -23,6 +23,9 @@ Flow:
 The FastAPI UploadFile uses a SpooledTemporaryFile underneath, so reading from
 `upload_file.file` and feeding it to MediaIoBaseUpload (resumable=True, 1MB
 chunks) means we never keep the full file in RAM.
+
+This module is intentionally split into small private helpers to keep the
+top-level handler short and easy to test.
 """
 
 from __future__ import annotations
@@ -32,9 +35,9 @@ import logging
 import os
 import re
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
-from fastapi import APIRouter, Form, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
@@ -61,6 +64,10 @@ _LINK_HOST_HINTS = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Input parsing & validation helpers
+# ---------------------------------------------------------------------------
+
 def _safe_name_part(s: str, max_len: int = 60) -> str:
     s = (s or "").strip()
     s = re.sub(r"[\\/\:\*\?\"<>\|]+", "_", s)
@@ -77,20 +84,21 @@ def _is_accepted_link(value: str) -> bool:
     return any(h in v for h in _LINK_HOST_HINTS)
 
 
-@router.post("/register")
-async def register_entry(request: Request):
-    """Multipart endpoint that handles streaming upload of up to 6 videos and / or links."""
+def _looks_like_upload_file(value: Any) -> bool:
+    """form.get() returns a Starlette UploadFile (or FastAPI's wrapper).
+    Accept both, plus duck-type via .filename for safety.
+    """
+    return isinstance(value, (UploadFile, StarletteUploadFile)) or hasattr(value, "filename")
 
-    # Parse multipart form manually to keep stream behaviour for files
-    form = await request.form()
 
+def _validate_contact_fields(form) -> dict:
+    """Validate the parent/child/email/consent block. Raises HTTPException on error."""
     child_name = (form.get("child_name") or "").strip()
     parent_name = (form.get("parent_name") or "").strip()
     parent_email = (form.get("parent_email") or "").strip()
     consent = (form.get("consent") or "").strip().lower()
     locale = (form.get("locale") or "vi").strip().lower()
 
-    # ---------- Validation ----------
     if not child_name:
         raise HTTPException(status_code=400, detail="child_name is required")
     if not parent_name:
@@ -100,23 +108,29 @@ async def register_entry(request: Request):
     if consent not in ("true", "1", "yes", "on"):
         raise HTTPException(status_code=400, detail="consent is required")
 
-    # Collect songs and validate at least one provided
-    song_inputs = []  # list of dicts: {idx, mode, file?, link?}
+    return {
+        "child_name": child_name,
+        "parent_name": parent_name,
+        "parent_email": parent_email,
+        "locale": locale,
+    }
+
+
+def _collect_song_inputs(form) -> list[dict]:
+    """Pull the 6 (mode, file, link) tuples out of the parsed multipart form."""
+    songs: list[dict] = []
     for i in range(1, TOTAL_SONGS + 1):
         mode = (form.get(f"song_{i}_mode") or "upload").strip().lower()
         if mode not in ("upload", "link"):
             mode = "upload"
+
         raw_value = form.get(f"song_{i}_file") if mode == "upload" else None
         link_value = (form.get(f"song_{i}_link") or "").strip() if mode == "link" else ""
 
-        # `form.get()` returns either a Starlette UploadFile (when the part had
-        # a filename) or `str` (text part). FastAPI's UploadFile is a different
-        # wrapper class in modern FastAPI, so we check for Starlette's class
-        # OR duck-type via `filename` attribute.
-        is_file = isinstance(raw_value, (UploadFile, StarletteUploadFile)) or hasattr(raw_value, "filename")
+        is_file = _looks_like_upload_file(raw_value) if mode == "upload" else False
         upload_file = raw_value if (mode == "upload" and is_file) else None
 
-        song_inputs.append(
+        songs.append(
             {
                 "idx": i,
                 "mode": mode,
@@ -124,12 +138,17 @@ async def register_entry(request: Request):
                 "link": link_value if mode == "link" else "",
             }
         )
+    return songs
 
-    provided = [s for s in song_inputs if (s["file"] is not None) or (s["link"] != "")]
+
+def _validate_song_inputs(song_inputs: list[dict]) -> None:
+    """Ensures at least one song was provided and all link values are valid."""
+    provided = [
+        s for s in song_inputs if (s["file"] is not None) or (s["link"] != "")
+    ]
     if not provided:
         raise HTTPException(status_code=400, detail="At least one song must be submitted")
 
-    # Validate links
     for s in song_inputs:
         if s["mode"] == "link" and s["link"] and not _is_accepted_link(s["link"]):
             raise HTTPException(
@@ -137,136 +156,176 @@ async def register_entry(request: Request):
                 detail=f"Song {s['idx']} link is invalid (must be YouTube or Google Drive)",
             )
 
-    # ---------- Build Drive folder ----------
-    request_id = str(uuid.uuid4())[:8]
-    logger.info(
-        "[register %s] start child=%s parent=%s email=%s songs=%d",
-        request_id,
-        child_name,
-        parent_name,
-        parent_email,
-        len(provided),
-    )
 
-    try:
-        drive = build_drive_service()
-    except Exception as e:
-        logger.exception("Failed to build Drive service")
-        raise HTTPException(status_code=500, detail=f"Drive auth failed: {e}")
-
-    # Folder name: "[Child Name] - [Parent Name]" (with timestamp to keep uniqueness)
+def _build_folder_name(child_name: str, parent_name: str) -> str:
     timestamp = _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    folder_name = f"{_safe_name_part(child_name)} - {_safe_name_part(parent_name)} ({timestamp})"
-    parent_folder_id = get_shared_drive_folder_id()
+    return f"{_safe_name_part(child_name)} - {_safe_name_part(parent_name)} ({timestamp})"
 
+
+# ---------------------------------------------------------------------------
+# Per-song processors (Drive upload / link doc)
+# ---------------------------------------------------------------------------
+
+def _process_upload_song(drive, folder_id: str, song: dict) -> dict:
+    upload: UploadFile = song["file"]
+    original = upload.filename or f"song_{song['idx']}.mp4"
+    safe = _safe_name_part(original, max_len=120) or f"song_{song['idx']}.mp4"
+    target_name = f"Song_{song['idx']:02d}_{safe}"
+    mime = upload.content_type or "video/mp4"
+
+    file_obj = upload.file
     try:
-        folder = create_subfolder(drive, folder_name, parent_id=parent_folder_id)
-    except Exception as e:
-        logger.exception("Folder creation failed")
-        raise HTTPException(status_code=502, detail=f"Could not create Drive folder: {e}")
+        file_obj.seek(0)
+    except Exception:
+        pass
 
-    folder_id = folder["id"]
-    folder_url = folder.get("webViewLink") or f"https://drive.google.com/drive/folders/{folder_id}"
+    drive_file = stream_upload_to_folder(
+        drive,
+        folder_id=folder_id,
+        name=target_name,
+        file_obj=file_obj,
+        mime_type=mime,
+    )
+    return {
+        "song": song["idx"],
+        "type": "upload",
+        "file_id": drive_file.get("id"),
+        "file_name": target_name,
+        "file_link": drive_file.get("webViewLink"),
+        "size": drive_file.get("size"),
+    }
 
-    # ---------- Process each song ----------
-    song_results = []
-    for s in song_inputs:
-        i = s["idx"]
-        result = {"song": i, "type": "skipped"}
+
+def _process_link_song(drive, folder_id: str, song: dict) -> dict:
+    doc_name = f"Song_{song['idx']:02d}_link"
+    doc = create_link_doc(
+        drive,
+        folder_id=folder_id,
+        doc_name=doc_name,
+        link_url=song["link"],
+        header_text=f"Tiny Faith Songs — Song {song['idx']} link",
+    )
+    return {
+        "song": song["idx"],
+        "type": "link",
+        "submitted_link": song["link"],
+        "doc_id": doc.get("id"),
+        "doc_link": doc.get("webViewLink"),
+        "doc_name": doc_name,
+    }
+
+
+async def _process_song_inputs(drive, folder_id: str, song_inputs: list[dict], request_id: str) -> list[dict]:
+    """Process all songs in order, collecting per-song results.
+
+    Always closes UploadFile handles. Per-song failures are recorded but do not
+    abort processing of subsequent songs — we want a partial success rather
+    than losing everything to one transient API blip.
+    """
+    results: list[dict] = []
+    for song in song_inputs:
+        i = song["idx"]
+        result: dict = {"song": i, "type": "skipped"}
         try:
-            if s["mode"] == "upload" and s["file"] is not None:
-                upload: UploadFile = s["file"]
-                # Determine a clean filename
-                original = upload.filename or f"song_{i}.mp4"
-                safe = _safe_name_part(original, max_len=120) or f"song_{i}.mp4"
-                target_name = f"Song_{i:02d}_{safe}"
-                mime = upload.content_type or "video/mp4"
-
-                # Stream the SpooledTemporaryFile directly into Drive
-                file_obj = upload.file
-                try:
-                    file_obj.seek(0)
-                except Exception:
-                    pass
-
-                # Soft size pre-check (only if we can find size cheaply)
-                # FastAPI does not provide size directly; we rely on chunked upload.
-                drive_file = stream_upload_to_folder(
-                    drive,
-                    folder_id=folder_id,
-                    name=target_name,
-                    file_obj=file_obj,
-                    mime_type=mime,
-                )
-                result.update(
-                    {
-                        "type": "upload",
-                        "file_id": drive_file.get("id"),
-                        "file_name": target_name,
-                        "file_link": drive_file.get("webViewLink"),
-                        "size": drive_file.get("size"),
-                    }
-                )
-            elif s["mode"] == "link" and s["link"]:
-                doc_name = f"Song_{i:02d}_link"
-                doc = create_link_doc(
-                    drive,
-                    folder_id=folder_id,
-                    doc_name=doc_name,
-                    link_url=s["link"],
-                    header_text=f"Tiny Faith Songs — Song {i} link",
-                )
-                result.update(
-                    {
-                        "type": "link",
-                        "submitted_link": s["link"],
-                        "doc_id": doc.get("id"),
-                        "doc_link": doc.get("webViewLink"),
-                        "doc_name": doc_name,
-                    }
-                )
-            else:
-                # No content for this song
-                result["type"] = "skipped"
-        except Exception as e:
-            logger.exception("[register %s] song %d failed: %s", request_id, i, e)
-            result.update({"type": "error", "error": str(e)})
+            if song["mode"] == "upload" and song["file"] is not None:
+                result = _process_upload_song(drive, folder_id, song)
+            elif song["mode"] == "link" and song["link"]:
+                result = _process_link_song(drive, folder_id, song)
+        except Exception as exc:
+            logger.exception("[register %s] song %d failed: %s", request_id, i, exc)
+            result = {"song": i, "type": "error", "error": str(exc)}
         finally:
-            song_results.append(result)
-            # Always close UploadFile handle if we opened it
-            try:
-                if s.get("file") is not None:
-                    await s["file"].close()
-            except Exception:
-                pass
+            results.append(result)
+            await _close_upload_handle(song)
+    return results
 
-    successful = [r for r in song_results if r["type"] in ("upload", "link")]
-    failed = [r for r in song_results if r["type"] == "error"]
 
-    # ---------- Send email notification ----------
-    email_status = {"sent": False}
+async def _close_upload_handle(song: dict) -> None:
+    if song.get("file") is None:
+        return
     try:
-        subject, html, plain = render_registration_email(
-            {
-                "child_name": child_name,
-                "parent_name": parent_name,
-                "parent_email": parent_email,
-                "folder_url": folder_url,
-                "folder_name": folder_name,
-                "song_results": song_results,
-            },
-            locale=locale,
-        )
+        await song["file"].close()
+    except Exception:
+        # Best-effort: handle may already be closed by stream consumer.
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Email notification
+# ---------------------------------------------------------------------------
+
+def _send_registration_email(payload: dict, locale: str) -> dict:
+    try:
+        subject, html, plain = render_registration_email(payload, locale=locale)
         send_html_email(
             subject=subject,
             html_body=html,
             plain_text=plain,
             to_email=admin_email(),
         )
-        email_status = {"sent": True, "to": admin_email()}
-    except Exception as e:
-        logger.exception("[register %s] email send failed", request_id)
-        email_status = {"sent": False, "error": str(e)}
+        return {"sent": True, "to": admin_email()}
+    except Exception as exc:
+        logger.exception("registration email send failed")
+        return {"sent": False, "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# HTTP handlers
+# ---------------------------------------------------------------------------
+
+@router.post("/register")
+async def register_entry(request: Request):
+    """Multipart endpoint that handles streaming upload of up to 6 videos and / or links."""
+
+    form = await request.form()
+
+    contact = _validate_contact_fields(form)
+    song_inputs = _collect_song_inputs(form)
+    _validate_song_inputs(song_inputs)
+
+    request_id = str(uuid.uuid4())[:8]
+    logger.info(
+        "[register %s] start child=%s parent=%s email=%s",
+        request_id,
+        contact["child_name"],
+        contact["parent_name"],
+        contact["parent_email"],
+    )
+
+    try:
+        drive = build_drive_service()
+    except Exception as exc:
+        logger.exception("Failed to build Drive service")
+        raise HTTPException(status_code=500, detail=f"Drive auth failed: {exc}")
+
+    folder_name = _build_folder_name(contact["child_name"], contact["parent_name"])
+    parent_folder_id = get_shared_drive_folder_id()
+
+    try:
+        folder = create_subfolder(drive, folder_name, parent_id=parent_folder_id)
+    except Exception as exc:
+        logger.exception("Folder creation failed")
+        raise HTTPException(status_code=502, detail=f"Could not create Drive folder: {exc}")
+
+    folder_id = folder["id"]
+    folder_url = folder.get("webViewLink") or f"https://drive.google.com/drive/folders/{folder_id}"
+
+    song_results = await _process_song_inputs(drive, folder_id, song_inputs, request_id)
+
+    successful = [r for r in song_results if r["type"] in ("upload", "link")]
+    failed = [r for r in song_results if r["type"] == "error"]
+
+    email_status = _send_registration_email(
+        {
+            "child_name": contact["child_name"],
+            "parent_name": contact["parent_name"],
+            "parent_email": contact["parent_email"],
+            "folder_url": folder_url,
+            "folder_name": folder_name,
+            "song_results": song_results,
+        },
+        locale=contact["locale"],
+    )
 
     logger.info(
         "[register %s] done folder=%s ok=%d failed=%d email=%s",

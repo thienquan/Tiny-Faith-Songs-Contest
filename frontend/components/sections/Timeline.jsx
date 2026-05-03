@@ -35,10 +35,10 @@ export function Timeline() {
             <CardContent>
               <ul className="space-y-2">
                 {Array.isArray(eligibility) &&
-                  eligibility.map((b, i) => (
-                    <li key={i} className="flex items-start gap-2 text-slate-700">
+                  eligibility.map((bullet) => (
+                    <li key={bullet} className="flex items-start gap-2 text-slate-700">
                       <span className="mt-1.5 inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
-                      <span>{b}</span>
+                      <span>{bullet}</span>
                     </li>
                   ))}
               </ul>
@@ -61,7 +61,7 @@ export function Timeline() {
               <ol className="relative border-l-2 border-sky-200 ml-2 space-y-5">
                 {Array.isArray(events) &&
                   events.map((ev, i) => (
-                    <li key={i} className="pl-5" data-testid={`timeline-event-${i}`}>
+                    <li key={ev.date} className="pl-5" data-testid={`timeline-event-${i}`}>
                       <span
                         className="absolute -left-[7px] flex h-3 w-3 items-center justify-center rounded-full bg-sky-500 ring-4 ring-white"
                         aria-hidden="true"

@@ -49,7 +49,7 @@ export function About() {
               const Icon = PILLAR_ICONS[i] || BookOpen;
               return (
                 <Card
-                  key={i}
+                  key={p.title}
                   className="hover:-translate-y-0.5 hover:shadow-pop transition-[box-shadow,transform]"
                   data-testid={`about-pillar-${i}`}
                 >
