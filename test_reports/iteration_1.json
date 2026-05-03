@@ -37,7 +37,7 @@
   
   "test_report_links": [
     "/app/backend_test.py",
-    "/root/.emergent/automation_output/*/console_*.log"
+    "/tmp/automation_output/*/console_*.log"
   ],
   
   "action_item_for_main_agent": "",

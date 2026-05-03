@@ -86,8 +86,11 @@ frontend/node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.node
 # Environment and credential files
 .env
 .env.*
+!.env.example
 *.env
 credentials.json
+credentials/
 *.pem
 *.key
 .credentials
+tiny-faith-songs-contest-*.json

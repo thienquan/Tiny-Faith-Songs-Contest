@@ -10,8 +10,8 @@ import os
 from datetime import datetime
 from io import BytesIO
 
-# Backend URL from frontend .env
-BASE_URL = "https://sing-god-hymns.preview.emergentagent.com"
+# Backend URL (override with BASE_URL when needed)
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8001")
 
 
 class TinyFaithAPITester:

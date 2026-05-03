@@ -137,7 +137,7 @@ export const messages = {
     form: {
       title: 'Đăng ký dự thi',
       subtitle:
-        'Phụ huynh vui lòng điền thông tin và nộp 06 video tương ứng 06 bài hát của bé.',
+        'Phụ huynh vui lòng điền thông tin. Có thể nộp 1 hoặc nhiều bài mỗi lần và quay lại nộp tiếp bằng đúng SĐT đã đăng ký.',
       sectionInfo: 'Thông tin liên hệ',
       childName: 'Tên bé',
       childNamePlaceholder: 'Ví dụ: Nguyễn An Nhiên',
@@ -145,9 +145,11 @@ export const messages = {
       parentNamePlaceholder: 'Ví dụ: Nguyễn Văn A',
       email: 'Email phụ huynh',
       emailPlaceholder: 'parent@example.com',
-      sectionVideos: 'Nộp 06 video bài hát',
+      phone: 'Số điện thoại',
+      phonePlaceholder: 'Ví dụ: 0912345678',
+      sectionVideos: 'Nộp video bài hát (linh hoạt nhiều đợt)',
       sectionVideosNote:
-        'Với mỗi bài, bé chọn một trong hai cách: tải video lên trực tiếp (≤ 2GB) HOẶC dán link YouTube / Google Drive đã công khai.',
+        'Không bắt buộc nộp đủ 06 bài trong một lần. Mỗi lần nộp chỉ cần ít nhất 01 bài; lần sau nhập lại đúng SĐT để nộp tiếp các bài còn lại.',
       modeUpload: 'Tải video lên',
       modeLink: 'Dán link',
       pickFile: 'Chọn file video',
@@ -168,6 +170,7 @@ export const messages = {
       validation: {
         required: 'Vui lòng nhập trường này',
         email: 'Email chưa hợp lệ',
+        phone: 'Số điện thoại chưa hợp lệ',
         sizeTooBig: 'File vượt quá 2GB. Vui lòng nén lại hoặc dán link.',
         emptyVideo: 'Vui lòng tải video hoặc dán link cho bài này',
         invalidLink: 'Link không hợp lệ. Hãy dùng link YouTube hoặc Google Drive.',
@@ -176,10 +179,10 @@ export const messages = {
       success: {
         title: 'Đã nộp bài thành công! 🎉',
         body:
-          'Cảm ơn bé và gia đình đã tham gia cuộc thi Hát Kinh Thánh cùng Tiny Faith Songs.\nBan Tổ Chức đã nhận được toàn bộ bài dự thi của bé.',
-        folderLabel: 'Thư mục Drive đã được tạo:',
+          'Cảm ơn bé và gia đình đã tham gia cuộc thi Hát Kinh Thánh cùng Tiny Faith Songs.\nBan Tổ Chức đã nhận được các bài bạn vừa nộp trong đợt này.',
+        folderLabel: 'Thư mục Drive của thí sinh:',
         nextSteps:
-          'Kết quả sẽ được công bố vào ngày 15/08/2026 (trên Zoom). BTC sẽ liên hệ với bạn qua email khi cần.',
+          'Bạn có thể quay lại nộp thêm bài bất cứ lúc nào bằng đúng SĐT này. Kết quả sẽ được công bố vào ngày 15/08/2026 (trên Zoom).',
         close: 'Đóng',
       },
       error: {
@@ -335,7 +338,7 @@ export const messages = {
     form: {
       title: 'Register your entry',
       subtitle:
-        'Parents — please fill in your information and submit 6 videos for the 6 songs.',
+        'Parents, fill in your information. You can submit one or more songs per session and come back later with the same phone number.',
       sectionInfo: 'Contact information',
       childName: 'Child’s name',
       childNamePlaceholder: 'e.g. Sophia Nguyen',
@@ -343,9 +346,11 @@ export const messages = {
       parentNamePlaceholder: 'e.g. John Nguyen',
       email: 'Parent’s email',
       emailPlaceholder: 'parent@example.com',
-      sectionVideos: 'Submit 6 song videos',
+      phone: 'Phone number',
+      phonePlaceholder: 'e.g. 0912345678',
+      sectionVideos: 'Submit song videos (multi-session)',
       sectionVideosNote:
-        'For each song, choose one option: upload directly (≤ 2GB) OR paste a public YouTube / Google Drive link.',
+        'You do not need to submit all 6 songs at once. Submit at least one song now, then return later with the same phone number to continue.',
       modeUpload: 'Upload video',
       modeLink: 'Paste link',
       pickFile: 'Choose video file',
@@ -366,6 +371,7 @@ export const messages = {
       validation: {
         required: 'This field is required',
         email: 'Invalid email address',
+        phone: 'Invalid phone number',
         sizeTooBig: 'File exceeds 2GB. Please compress or paste a link.',
         emptyVideo: 'Please upload a file or paste a link for this song',
         invalidLink: 'Invalid link. Use a YouTube or Google Drive link.',
@@ -374,10 +380,10 @@ export const messages = {
       success: {
         title: 'Entry submitted successfully! 🎉',
         body:
-          'Thank you for joining Bible Song Contest with Tiny Faith Songs.\nWe have received your entry.',
-        folderLabel: 'Drive folder created:',
+          'Thank you for joining Bible Song Contest with Tiny Faith Songs.\nWe have received the songs submitted in this session.',
+        folderLabel: 'Contestant Drive folder:',
         nextSteps:
-          'Results will be announced on August 15, 2026 (Zoom). The Organizer will reach out via email if needed.',
+          'You can come back and upload more songs any time using the same phone number. Results will be announced on August 15, 2026 (Zoom).',
         close: 'Close',
       },
       error: {

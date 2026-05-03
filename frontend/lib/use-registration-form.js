@@ -24,6 +24,7 @@ export function useRegistrationForm() {
   const [childName, setChildName] = useState('');
   const [parentName, setParentName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(false);
   const [songs, setSongs] = useState(() =>
     Array.from({ length: TOTAL_SONGS }, () => initialSong()),
@@ -67,6 +68,7 @@ export function useRegistrationForm() {
     setChildName('');
     setParentName('');
     setEmail('');
+    setPhone('');
     setConsent(false);
     setSongs(Array.from({ length: TOTAL_SONGS }, () => initialSong()));
   }, []);
@@ -91,7 +93,7 @@ export function useRegistrationForm() {
       setSubmissionError('');
       setRetryAvailable(false);
 
-      const state = { childName, parentName, email, consent, songs };
+      const state = { childName, parentName, email, phone, consent, songs };
       const validation = validateRegistration(state, t);
       setErrors(validation.errors);
       setSongs((prev) => prev.map((s, i) => ({ ...s, error: validation.songErrors[i] })));
@@ -166,7 +168,7 @@ export function useRegistrationForm() {
 
       xhr.send(fd);
     },
-    [submitting, childName, parentName, email, consent, songs, t, locale, resetForm],
+    [submitting, childName, parentName, email, phone, consent, songs, t, locale, resetForm],
   );
 
   const filledCount = useMemo(() => countFilledSongs(songs), [songs]);
@@ -176,6 +178,7 @@ export function useRegistrationForm() {
     childName,
     parentName,
     email,
+    phone,
     consent,
     songs,
     submitting,
@@ -189,6 +192,7 @@ export function useRegistrationForm() {
     setChildName,
     setParentName,
     setEmail,
+    setPhone,
     setConsent,
     // song actions
     updateSong,

@@ -135,8 +135,8 @@
 
 **Completed tasks**
 - ✅ Cleaned up CRA backups and unused files.
-- ✅ Confirmed deployment URL:
-  - **App live:** https://sing-god-hymns.preview.emergentagent.com
+- ✅ Confirmed local run target:
+  - **App live (local):** http://127.0.0.1:3000
 
 **Remaining tasks (to finish delivery)**
 - ⏳ Replace robot mascot placeholder with real `robot-mascot.jpg` once you upload it:

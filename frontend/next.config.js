@@ -23,6 +23,15 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    const backendBaseUrl = process.env.BACKEND_BASE_URL || 'http://127.0.0.1:8001';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendBaseUrl}/api/:path*`,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

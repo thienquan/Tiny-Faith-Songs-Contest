@@ -9,10 +9,12 @@ export function ContactInfoCard({
   childName,
   parentName,
   email,
+  phone,
   errors,
   setChildName,
   setParentName,
   setEmail,
+  setPhone,
 }) {
   return (
     <Card>
@@ -63,6 +65,21 @@ export function ContactInfoCard({
               data-testid="registration-email-input"
             />
             {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="phone">
+              {t('form.phone')} <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder={t('form.phonePlaceholder')}
+              aria-invalid={!!errors.phone}
+              data-testid="registration-phone-input"
+            />
+            {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
           </div>
         </div>
       </CardContent>

@@ -86,10 +86,12 @@ export function RegistrationForm() {
             childName={form.childName}
             parentName={form.parentName}
             email={form.email}
+            phone={form.phone}
             errors={form.errors}
             setChildName={form.setChildName}
             setParentName={form.setParentName}
             setEmail={form.setEmail}
+            setPhone={form.setPhone}
           />
 
           <SongsSection

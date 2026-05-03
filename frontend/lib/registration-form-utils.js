@@ -12,6 +12,13 @@ export const SUBMIT_BUTTON_STATE = {
 export const initialSong = () => ({ mode: 'upload', file: null, link: '', error: '' });
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_DIGITS_REGEX = /^\d{9,12}$/;
+
+function normalizePhone(phone) {
+  const digits = String(phone || '').replace(/\D+/g, '');
+  if (digits.startsWith('84') && digits.length >= 11) return `0${digits.slice(2)}`;
+  return digits;
+}
 
 /**
  * Validate the registration form state. Pure function — easy to unit test.
@@ -23,6 +30,9 @@ export function validateRegistration(state, t) {
   if (!state.parentName.trim()) errors.parentName = t('form.validation.required');
   if (!state.email.trim()) errors.email = t('form.validation.required');
   else if (!EMAIL_REGEX.test(state.email)) errors.email = t('form.validation.email');
+  const normalizedPhone = normalizePhone(state.phone);
+  if (!state.phone?.trim()) errors.phone = t('form.validation.required');
+  else if (!PHONE_DIGITS_REGEX.test(normalizedPhone)) errors.phone = t('form.validation.phone');
   if (!state.consent) errors.consent = t('form.consentRequired');
 
   const songErrors = state.songs.map((song) => {
@@ -57,6 +67,7 @@ export function buildRegistrationFormData(state, locale) {
   fd.append('child_name', state.childName.trim());
   fd.append('parent_name', state.parentName.trim());
   fd.append('parent_email', state.email.trim());
+  fd.append('phone', state.phone.trim());
   fd.append('consent', 'true');
   fd.append('locale', locale);
 
