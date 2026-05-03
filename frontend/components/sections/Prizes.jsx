@@ -1,6 +1,7 @@
 'use client';
 
-import { Trophy, Medal, Award, Sparkles, BadgeDollarSign, Bot } from 'lucide-react';
+import Image from 'next/image';
+import { Trophy, Medal, Award, Sparkles, BadgeDollarSign } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FloatingDecor } from '@/components/ui/floating-decor';
@@ -60,20 +61,25 @@ function PrizeCard({ icon: Icon, rank, amount, count, accent, testId }) {
 }
 
 function RobotMascot({ alt }) {
-  // Placeholder mascot until robot-mascot.jpg is uploaded.
   return (
     <div
-      className="relative mx-auto w-44 sm:w-56 lg:w-64 aspect-square rounded-3xl bg-gradient-to-br from-sky-100 via-white to-bubblegum-100 border border-sky-200 shadow-soft animate-floaty-lg flex items-center justify-center"
-      data-testid="robot-mascot-placeholder"
-      role="img"
-      aria-label={alt}
+      className="relative mx-auto w-44 sm:w-56 lg:w-64 aspect-square animate-floaty-lg"
+      data-testid="robot-mascot"
     >
-      <div className="absolute inset-3 rounded-2xl border-2 border-dashed border-sky-300/70" />
-      <div className="flex flex-col items-center gap-2 text-sky-700">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-soft">
-          <Bot size={36} strokeWidth={2.2} />
-        </span>
-        <span className="text-xs font-semibold tracking-wide uppercase text-slate-500">Tiny Faith</span>
+      {/* Decorative gradient halo behind the robot */}
+      <div
+        className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-sky-200/60 via-white to-bubblegum-200/60 blur-2xl"
+        aria-hidden="true"
+      />
+      <div className="relative h-full w-full rounded-[2rem] overflow-hidden bg-gradient-to-br from-sky-50 via-white to-bubblegum-50 border border-sky-200 shadow-pop">
+        <Image
+          src="/robot-mascot.jpg"
+          alt={alt}
+          fill
+          sizes="(max-width: 1024px) 224px, 256px"
+          className="object-contain p-3"
+          priority={false}
+        />
       </div>
     </div>
   );

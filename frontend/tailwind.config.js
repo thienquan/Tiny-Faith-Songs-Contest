@@ -14,8 +14,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-figtree)', 'ui-sans-serif', 'system-ui'],
-        display: ['var(--font-fredoka)', 'ui-sans-serif', 'system-ui'],
+        sans: ['var(--font-quicksand)', 'ui-sans-serif', 'system-ui'],
+        display: ['var(--font-baloo)', 'ui-sans-serif', 'system-ui'],
       },
       colors: {
         border: 'hsl(var(--border))',
