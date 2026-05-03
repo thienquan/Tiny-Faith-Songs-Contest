@@ -9,35 +9,35 @@
   },
   {
     "content": "Phase 2: Get design guidelines from design_agent (kid-friendly contest landing page)",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Replace CRA frontend with Next.js 14 (App Router) + Tailwind + i18n; configure package.json so supervisor `yarn start` runs Next.js",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Build landing page sections (Hero, About, Prizes, How-to-join, Criteria, Form, Footer) with all content from info-content.md",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Build language toggle + i18n strings (VI default, EN switch)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Build registration form with 6 songs (Upload OR Link toggle), progress bar, validation, consent checkbox",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Implement FastAPI /api/register with streaming Drive upload + Google Docs creation + SMTP email",
-    "status": "pending"
+    "status": "completed"
   },
   {
-    "content": "Phase 2: All user stories US1-US14 covered in development",
-    "status": "pending"
+    "content": "Phase 2: Verified end-to-end (curl mixed mode 6/6 success, email sent, frontend renders, language toggle works)",
+    "status": "completed"
   },
   {
     "content": "Phase 3: End-to-end testing with testing_agent_v3 (backend curl + frontend Playwright); fix all bugs",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 4: Final polish, replace robot-mascot placeholder when uploaded, deliver",
