@@ -7,6 +7,18 @@ function isVietnamesePreferred(acceptLanguage = '') {
     .some((lang) => lang.startsWith('vi'));
 }
 
+function buildPublicOrigin(request) {
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const host = request.headers.get('host');
+
+  const proto = forwardedProto || request.nextUrl.protocol.replace(':', '') || 'https';
+  const hostname = (forwardedHost || host || request.nextUrl.host || '').split(',')[0].trim();
+
+  if (!hostname) return null;
+  return `${proto}://${hostname}`;
+}
+
 export function middleware(request) {
   const { pathname } = request.nextUrl;
 
@@ -14,7 +26,13 @@ export function middleware(request) {
   if (pathname === '/') {
     const acceptLanguage = request.headers.get('accept-language') || '';
     if (isVietnamesePreferred(acceptLanguage)) {
+      const publicOrigin = buildPublicOrigin(request);
       const url = request.nextUrl.clone();
+      if (publicOrigin) {
+        const nextUrl = new URL('/vi', publicOrigin);
+        nextUrl.search = url.search;
+        return NextResponse.redirect(nextUrl);
+      }
       url.pathname = '/vi';
       return NextResponse.redirect(url);
     }
