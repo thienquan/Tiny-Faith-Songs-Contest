@@ -582,10 +582,18 @@ async def health():
 
 
 @router.get("/lookup")
-async def lookup_phone(phone: Optional[str] = None):
-    """Quick lookup: does this phone already have a folder? Used by the form
-    to show a friendly hint ("Welcome back, you've already submitted N songs").
-    Returns ``{exists: bool, folder_url?, folder_name?}``.
+async def lookup_phone(phone: Optional[str] = None, email: Optional[str] = None):
+    """Quick lookup: does this phone+email pair already have a folder?
+
+    Dual-verification: both phone AND email must match an existing record
+    before progress is returned. This prevents one user from accidentally
+    viewing or overwriting another user's submission by guessing a phone number.
+
+    Response shapes
+    ---------------
+    - ``{exists: False}``                   – phone not found (new user)
+    - ``{exists: True, mismatch: True}``    – phone found but email does not match
+    - ``{exists: True, ...progress}``       – phone+email both match, progress returned
     """
     if not phone:
         return {"exists": False}
@@ -593,8 +601,16 @@ async def lookup_phone(phone: Optional[str] = None):
     if not _is_valid_vn_phone(normalized):
         return {"exists": False, "phone": normalized}
 
+    # Normalize supplied email for case-insensitive comparison
+    supplied_email = (email or "").strip().lower()
+
     progress = get_participant_progress(normalized)
     if progress and progress.get("folder_id"):
+        stored_email = (progress.get("parent_email") or "").strip().lower()
+        # Only enforce email check when there is a stored email (i.e. not a
+        # legacy record with no email) and the caller supplied an email.
+        if stored_email and supplied_email and stored_email != supplied_email:
+            return {"exists": True, "mismatch": True, "phone": normalized}
         return {
             "exists": True,
             "phone": normalized,
@@ -604,7 +620,7 @@ async def lookup_phone(phone: Optional[str] = None):
             "participant": {
                 "child_name": progress.get("child_name", ""),
                 "parent_name": progress.get("parent_name", ""),
-                "parent_email": progress.get("parent_email", ""),
+                # Never return stored email — prevents leaking it via network tab
             },
             "uploaded_songs": progress.get("uploaded_songs", []),
             "missing_songs": progress.get("missing_songs", []),
@@ -621,6 +637,12 @@ async def lookup_phone(phone: Optional[str] = None):
 
     if not folder:
         return {"exists": False, "phone": normalized}
+
+    # Drive fallback: no stored email to compare against.
+    # If the caller supplied an email we cannot verify it, so we must
+    # block progress restore to prevent unauthorized access.
+    if supplied_email:
+        return {"exists": True, "mismatch": True, "phone": normalized}
 
     folder_id = folder.get("id")
     folder_url = folder.get("webViewLink") or f"https://drive.google.com/drive/folders/{folder_id}"

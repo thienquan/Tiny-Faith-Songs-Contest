@@ -98,7 +98,9 @@ export function useRegistrationForm() {
     const participant = data?.participant || {};
     if (participant.child_name) setChildName(participant.child_name);
     if (participant.parent_name) setParentName(participant.parent_name);
-    if (participant.parent_email) setEmail(participant.parent_email);
+    // Do NOT overwrite the email the user typed — it was already verified
+    // server-side as part of dual-verification. Overwriting it here would
+    // allow the UI to reveal the stored email even after a mismatch slip.
   }, []);
 
   const resetForm = useCallback(() => {
@@ -140,20 +142,34 @@ export function useRegistrationForm() {
       return;
     }
 
+    // Email required for dual-verification
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setErrors((prev) => ({ ...prev, email: t('form.validation.email') }));
+      setLookupState('error');
+      setLookupError(t('form.validation.email'));
+      return;
+    }
+
     setLookupState('checking');
     setLookupError('');
-    setErrors((prev) => ({ ...prev, phone: '' }));
+    setErrors((prev) => ({ ...prev, phone: '', email: '' }));
 
     try {
-      const res = await fetch(`${LOOKUP_ENDPOINT}?phone=${encodeURIComponent(phone.trim())}`, {
-        method: 'GET',
-      });
+      const params = new URLSearchParams({ phone: phone.trim(), email: trimmedEmail });
+      const res = await fetch(`${LOOKUP_ENDPOINT}?${params}`, { method: 'GET' });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.detail || data?.message || 'Lookup failed');
       }
 
-      if (data?.exists) {
+      if (data?.exists && data?.mismatch) {
+        // Phone found but email does not match — block progress restore
+        const msg = t('form.lookup.mismatch');
+        setLookupState('error');
+        setLookupError(msg);
+        toast.error(msg);
+      } else if (data?.exists) {
         applyLookupResult(data);
         setLookupState('found');
         setResolvedPhone(data.phone || normalized);
@@ -171,7 +187,7 @@ export function useRegistrationForm() {
       setLookupError(message);
       toast.error(message);
     }
-  }, [applyLookupResult, phone, t]);
+  }, [applyLookupResult, email, phone, t]);
 
   const closeSuccessDialog = useCallback(() => setSuccessResult(null), []);
 

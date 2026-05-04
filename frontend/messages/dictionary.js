@@ -161,16 +161,19 @@ export const messages = {
       songLabel: 'Bài hát số {n}',
       lookup: {
         noticeTitle:
-          'Bạn có thể nộp từng video một. Hệ thống sẽ tự động lưu tiến trình dựa trên Số điện thoại của bạn.',
+          'Bạn có thể nộp từng video một. Hệ thống lưu tiến trình theo SĐT và Email của bạn.',
         noticeBody:
-          'Bắt đầu bằng cách nhập SĐT và bấm kiểm tra để hệ thống nhận diện người mới hoặc tự động nạp tiến trình trước đó.',
+          'Nhập đúng SĐT và Email đã dùng lần trước để hệ thống tự động nạp lại tiến trình. Nếu là lần đầu, điền thông tin rồi bấm kiểm tra.',
         check: 'Kiểm tra tiến trình',
         checking: 'Đang kiểm tra...',
-        newUser: 'Số điện thoại chưa có hồ sơ. Bạn có thể bắt đầu nộp bài mới.',
+        newUser: 'Chưa tìm thấy hồ sơ với SĐT này. Bạn có thể bắt đầu nộp bài mới.',
         returningFound: 'Đã tìm thấy hồ sơ trước đó.',
         returningHint:
           'Đã nạp hồ sơ cũ: thông tin phụ huynh và các bài đã nộp được cập nhật tự động.',
         newHint: 'Hồ sơ mới: vui lòng điền thông tin và nộp ít nhất 1 bài hát.',
+        mismatch:
+          'Email không khớp với hồ sơ đã đăng ký cho SĐT này. Vui lòng kiểm tra lại email hoặc liên hệ Ban Tổ Chức.',
+        emailHint: 'Sử dụng cùng email đã nhập lần trước để hệ thống xác nhận đúng hồ sơ của bạn.',
         error: 'Không thể kiểm tra tiến trình lúc này. Vui lòng thử lại.',
         uploadedDone: 'Đã hoàn thành {count} bài trong các đợt trước',
         allUploaded:
@@ -396,16 +399,19 @@ export const messages = {
       songLabel: 'Song #{n}',
       lookup: {
         noticeTitle:
-          'You can submit one video at a time. The system automatically saves progress by your phone number.',
+          'You can submit one video at a time. The system saves your progress by phone number and email.',
         noticeBody:
-          'Start by entering your phone number and check enrollment to identify new or returning submissions.',
+          'Enter the same phone number and email you used before to restore your progress. First-timers can fill in details and tap Check.',
         check: 'Check progress',
         checking: 'Checking...',
-        newUser: 'No record found for this phone yet. You can start a new submission.',
+        newUser: 'No record found for this phone. You can start a new submission.',
         returningFound: 'Previous submission record found.',
         returningHint:
           'Returning profile loaded: contact details and completed songs have been restored automatically.',
         newHint: 'New profile: please fill in details and submit at least one song.',
+        mismatch:
+          'The email does not match the record on file for this phone number. Please check your email or contact the organizer.',
+        emailHint: 'Use the same email you entered before so the system can verify your submission record.',
         error: 'Could not check progress right now. Please try again.',
         uploadedDone: '{count} songs were completed in earlier sessions',
         allUploaded:

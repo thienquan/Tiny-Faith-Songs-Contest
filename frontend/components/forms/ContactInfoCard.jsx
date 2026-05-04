@@ -110,6 +110,7 @@ export function ContactInfoCard({
               data-testid="registration-email-input"
             />
             {errors.email && <p className="text-sm font-medium text-red-700">{errors.email}</p>}
+            <p className="text-sm text-slate-500">{t('form.lookup.emailHint')}</p>
           </div>
           </div>
         </div>
