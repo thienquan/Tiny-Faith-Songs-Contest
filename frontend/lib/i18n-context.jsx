@@ -76,6 +76,8 @@ function persistLocale(next) {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, next);
       document.documentElement.lang = next;
+      // Also set a cookie so middleware can read preference server-side.
+      document.cookie = `${STORAGE_KEY}=${next}; path=/; max-age=31536000; SameSite=Lax`;
     }
   } catch (err) {
     if (typeof console !== 'undefined') {
