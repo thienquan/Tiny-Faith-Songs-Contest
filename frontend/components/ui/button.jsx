@@ -41,6 +41,7 @@ export const Button = React.forwardRef(
     return (
       <Comp
         ref={ref}
+        suppressHydrationWarning
         className={cn(buttonVariants({ variant, size, className }))}
         {...props}
       />

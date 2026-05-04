@@ -4,7 +4,9 @@ import Image from 'next/image';
 import { useI18n } from '@/lib/i18n-context';
 
 export function Poster() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const posterSrc = locale === 'en' ? '/poster-vertical-en.jpg' : '/poster-vertical.jpg';
+
   return (
     <section className="py-10 sm:py-14 lg:hidden" data-testid="poster-section" id="poster">
       <div className="container-app">
@@ -16,7 +18,7 @@ export function Poster() {
         </h2>
         <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-soft">
           <Image
-            src="/poster-vertical.jpg"
+            src={posterSrc}
             alt={t('poster.alt')}
             width={1200}
             height={1600}

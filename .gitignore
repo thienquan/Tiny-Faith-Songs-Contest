@@ -94,3 +94,12 @@ credentials/
 *.key
 .credentials
 tiny-faith-songs-contest-*.json
+
+# Block Google service-account JSON keys (any naming style)
+**/service-account*.json
+**/service_account*.json
+**/*service-account*.json
+**/*service_account*.json
+**/gcp-key*.json
+**/google-credentials*.json
+**/credentials/*.json

@@ -13,6 +13,7 @@ from __future__ import annotations
 import io
 import logging
 import os
+import re
 import time
 from typing import Optional
 
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
-DEFAULT_CHUNK_SIZE = 1024 * 1024  # 1 MB resumable chunks
+DEFAULT_CHUNK_SIZE = 32 * 1024 * 1024  # 32 MB resumable chunks — reduces round-trips significantly
 RETRYABLE_STATUS = (429, 500, 502, 503, 504)
 
 
@@ -45,16 +46,79 @@ def _is_retryable(err: Exception) -> bool:
 def _service_account_path() -> str:
     return os.environ.get(
         "GOOGLE_SERVICE_ACCOUNT_JSON",
-        "/app/credentials/tiny-faith-songs-contest-873c0e89fa85.json",
+        "/app/credentials/tiny-faith-songs-contest-1e944b6e82cb.json",
     )
+
+
+_drive_service_cache: dict = {}
+_drive_credentials_cache: dict = {}
+
+
+def _get_credentials():
+    """Return cached service-account credentials (refreshed automatically)."""
+    sa_path = _service_account_path()
+    if sa_path not in _drive_credentials_cache:
+        if not os.path.exists(sa_path):
+            raise FileNotFoundError(f"Service Account file not found: {sa_path}")
+        creds = service_account.Credentials.from_service_account_file(sa_path, scopes=SCOPES)
+        _drive_credentials_cache[sa_path] = creds
+    return _drive_credentials_cache[sa_path]
 
 
 def build_drive_service():
     sa_path = _service_account_path()
-    if not os.path.exists(sa_path):
-        raise FileNotFoundError(f"Service Account file not found: {sa_path}")
-    creds = service_account.Credentials.from_service_account_file(sa_path, scopes=SCOPES)
-    return build("drive", "v3", credentials=creds, cache_discovery=False)
+    if sa_path in _drive_service_cache:
+        return _drive_service_cache[sa_path]
+    creds = _get_credentials()
+    svc = build("drive", "v3", credentials=creds, cache_discovery=False)
+    _drive_service_cache[sa_path] = svc
+    return svc
+
+
+def create_resumable_upload_session(
+    filename: str,
+    mime_type: str,
+    file_size: int,
+    parent_folder_id: str,
+) -> str:
+    """Initiate a Drive resumable upload session and return the session URI.
+
+    The caller (browser) can PUT the raw file bytes directly to this URI
+    without needing any additional auth headers — the auth token is baked in.
+    """
+    import google.auth.transport.requests as ga_transport  # local import to avoid startup overhead
+
+    creds = _get_credentials()
+    # Build an authorized session that automatically refreshes the token
+    authed = ga_transport.AuthorizedSession(creds)
+
+    metadata = {
+        "name": filename,
+        "parents": [parent_folder_id],
+    }
+
+    resp = authed.post(
+        "https://www.googleapis.com/upload/drive/v3/files"
+        "?uploadType=resumable&supportsAllDrives=true&includeItemsFromAllDrives=true",
+        headers={
+            "Content-Type": "application/json; charset=UTF-8",
+            "X-Upload-Content-Type": mime_type or "video/mp4",
+            "X-Upload-Content-Length": str(file_size),
+        },
+        json=metadata,
+    )
+
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"Drive refused to create upload session: HTTP {resp.status_code} — {resp.text[:300]}"
+        )
+
+    session_uri = resp.headers.get("Location") or resp.headers.get("location")
+    if not session_uri:
+        raise RuntimeError("Drive did not return a Location header for the resumable session")
+
+    logger.info("Resumable session created for %s (size=%d)", filename, file_size)
+    return session_uri
 
 
 def get_shared_drive_folder_id() -> str:
@@ -83,6 +147,72 @@ def create_subfolder(drive, name: str, parent_id: Optional[str] = None) -> dict:
     )
     logger.info("Drive folder created: id=%s name=%s", folder.get("id"), folder.get("name"))
     return folder
+
+
+def get_folder_by_id(drive, folder_id: str) -> Optional[dict]:
+    if not folder_id:
+        return None
+    try:
+        folder = (
+            drive.files()
+            .get(
+                fileId=folder_id,
+                fields="id, name, webViewLink, mimeType, trashed",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+    except Exception:
+        return None
+
+    if not folder or folder.get("trashed"):
+        return None
+    if folder.get("mimeType") != "application/vnd.google-apps.folder":
+        return None
+    return folder
+
+
+_SONG_SLOT_RE = re.compile(r"^song_(\d{2})_", re.IGNORECASE)
+
+
+def list_uploaded_song_indices(drive, folder_id: str, total_songs: int = 6) -> list[int]:
+    if not folder_id:
+        return []
+
+    query = f"'{folder_id}' in parents and trashed = false"
+    uploaded: set[int] = set()
+    page_token = None
+
+    while True:
+        response = (
+            drive.files()
+            .list(
+                q=query,
+                fields="nextPageToken, files(id, name)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+                corpora="allDrives",
+                spaces="drive",
+                pageToken=page_token,
+                pageSize=200,
+            )
+            .execute()
+        )
+
+        for item in response.get("files", []) or []:
+            name = item.get("name") or ""
+            match = _SONG_SLOT_RE.match(name)
+            if not match:
+                continue
+            idx = int(match.group(1))
+            if 1 <= idx <= total_songs:
+                uploaded.add(idx)
+
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+
+    return sorted(uploaded)
 
 
 def _escape_drive_query_string(value: str) -> str:
@@ -173,6 +303,44 @@ def find_folder_by_name_part(
     if last_err:
         raise last_err
     return None
+
+
+def find_file_in_folder_by_name(drive, folder_id: str, file_name: str) -> Optional[dict]:
+    """Find a non-trashed file by exact name inside a folder.
+
+    This is used by the direct-upload CORS fallback flow: when the browser
+    cannot read Drive's upload response due CORS, backend can still verify
+    whether the file has landed in Drive and persist its metadata.
+    """
+    if not folder_id or not file_name:
+        return None
+
+    safe_name = _escape_drive_query_string(file_name)
+    query = (
+        f"'{folder_id}' in parents "
+        f"and trashed = false "
+        f"and name = '{safe_name}'"
+    )
+
+    response = (
+        drive.files()
+        .list(
+            q=query,
+            fields="files(id, name, webViewLink, createdTime, modifiedTime)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            corpora="allDrives",
+            spaces="drive",
+            orderBy="createdTime desc",
+            pageSize=1,
+        )
+        .execute()
+    )
+
+    files = response.get("files", []) or []
+    if not files:
+        return None
+    return files[0]
 
 
 def stream_upload_to_folder(

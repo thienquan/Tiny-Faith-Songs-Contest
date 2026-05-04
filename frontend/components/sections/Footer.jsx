@@ -1,6 +1,6 @@
 'use client';
 
-import { Mail, Youtube, Heart } from 'lucide-react';
+import { Mail, Youtube } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
 
 export function Footer() {
@@ -39,8 +39,17 @@ export function Footer() {
         </div>
         <div className="mt-8 pt-6 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row gap-2 justify-between items-center">
           <p data-testid="footer-copyright">{t('footer.copyright')}</p>
-          <p className="inline-flex items-center gap-1">
-            Made with <Heart size={12} className="text-bubblegum-400" fill="currentColor" /> for kids and families.
+          <p className="text-center sm:text-right">
+            {t('footer.supportedBy')}{' '}
+            <a
+              href="https://kinhthanhgotay.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-sky-700 hover:underline ring-focus rounded-md"
+              data-testid="footer-sponsor-link"
+            >
+              kinhthanhgotay.com
+            </a>
           </p>
         </div>
       </div>

@@ -36,8 +36,10 @@ export function ConsentAndSubmitCard({
   progress,
   onCancel,
   locale,
+  hideSubmitButton = false,
 }) {
   const buttonState = getSubmitButtonState({ submitting, retryAvailable });
+  const consentItems = t('form.privacyNoteItems');
 
   return (
     <Card>
@@ -96,15 +98,17 @@ export function ConsentAndSubmitCard({
         )}
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            type="submit"
-            size="xl"
-            disabled={submitting}
-            className="w-full sm:w-auto"
-            data-testid="registration-submit-button"
-          >
-            {renderSubmitLabel({ buttonState, t })}
-          </Button>
+          {!hideSubmitButton && (
+            <Button
+              type="submit"
+              size="xl"
+              disabled={submitting}
+              className="w-full sm:w-auto"
+              data-testid="registration-submit-button"
+            >
+              {renderSubmitLabel({ buttonState, t })}
+            </Button>
+          )}
           {submitting && (
             <Button
               type="button"
@@ -117,9 +121,17 @@ export function ConsentAndSubmitCard({
             </Button>
           )}
         </div>
-        <p className="text-xs text-slate-500 flex items-center gap-1.5">
-          <ShieldCheck size={12} /> {t('form.privacyNote')}
-        </p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
+          <p className="flex items-start gap-2 font-semibold text-slate-800">
+            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-sky-700" />
+            <span>{t('form.privacyNote')}</span>
+          </p>
+          <ul className="mt-3 space-y-2 pl-6 list-disc text-slate-600">
+            {consentItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
       </CardContent>
     </Card>
   );

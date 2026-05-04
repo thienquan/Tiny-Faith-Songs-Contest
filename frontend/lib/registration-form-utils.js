@@ -9,15 +9,35 @@ export const SUBMIT_BUTTON_STATE = {
   RETRY: 'retry',
 };
 
-export const initialSong = () => ({ mode: 'upload', file: null, link: '', error: '' });
+export const initialSong = () => ({
+  mode: 'upload',
+  file: null,
+  link: '',
+  error: '',
+  uploaded: false,
+  uploadedType: '',
+});
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_DIGITS_REGEX = /^\d{9,12}$/;
 
-function normalizePhone(phone) {
+export function normalizePhone(phone) {
   const digits = String(phone || '').replace(/\D+/g, '');
   if (digits.startsWith('84') && digits.length >= 11) return `0${digits.slice(2)}`;
   return digits;
+}
+
+export function songsWithUploadedState(uploadedSongs = []) {
+  const uploadedSet = new Set((uploadedSongs || []).map((n) => Number(n)).filter((n) => n >= 1 && n <= TOTAL_SONGS));
+  return Array.from({ length: TOTAL_SONGS }, (_, i) => {
+    const idx = i + 1;
+    const uploaded = uploadedSet.has(idx);
+    return {
+      ...initialSong(),
+      uploaded,
+      uploadedType: uploaded ? 'uploaded' : '',
+    };
+  });
 }
 
 /**

@@ -159,6 +159,23 @@ export const messages = {
       linkPlaceholder: 'Dán link YouTube hoặc Google Drive (đã công khai)',
       linkHint: 'Hệ thống chấp nhận link YouTube hoặc Google Drive đã mở quyền xem.',
       songLabel: 'Bài hát số {n}',
+      lookup: {
+        noticeTitle:
+          'Bạn có thể nộp từng video một. Hệ thống sẽ tự động lưu tiến trình dựa trên Số điện thoại của bạn.',
+        noticeBody:
+          'Bắt đầu bằng cách nhập SĐT và bấm kiểm tra để hệ thống nhận diện người mới hoặc tự động nạp tiến trình trước đó.',
+        check: 'Kiểm tra tiến trình',
+        checking: 'Đang kiểm tra...',
+        newUser: 'Số điện thoại chưa có hồ sơ. Bạn có thể bắt đầu nộp bài mới.',
+        returningFound: 'Đã tìm thấy hồ sơ trước đó.',
+        returningHint:
+          'Đã nạp hồ sơ cũ: thông tin phụ huynh và các bài đã nộp được cập nhật tự động.',
+        newHint: 'Hồ sơ mới: vui lòng điền thông tin và nộp ít nhất 1 bài hát.',
+        error: 'Không thể kiểm tra tiến trình lúc này. Vui lòng thử lại.',
+        uploadedDone: 'Đã hoàn thành {count} bài trong các đợt trước',
+        allUploaded:
+          'Bạn đã nộp đủ 6 bài. Nếu cần cập nhật, vui lòng liên hệ Ban Tổ Chức để được hỗ trợ.',
+      },
       consent:
         'Tôi đồng ý cho con tôi tham gia cuộc thi và cho phép Tiny Faith Songs sử dụng hình ảnh/video theo thể lệ chương trình.',
       consentRequired: 'Vui lòng tích vào ô đồng ý để gửi bài dự thi.',
@@ -166,7 +183,12 @@ export const messages = {
       submitting: 'Đang gửi bài dự thi…',
       submittingHint: 'Đang tải các video lên Google Drive – xin đừng đóng tab này.',
       privacyNote:
-        'Thông tin của bạn chỉ được sử dụng cho mục đích tổ chức cuộc thi và sẽ không được chia sẻ ra ngoài.',
+        'Khi tham gia, phụ huynh hoặc người giám hộ đồng ý rằng Tiny Faith Songs được sử dụng video của bé để:',
+      privacyNoteItems: [
+        'Đăng tải lại trên YouTube và các nền tảng mạng xã hội.',
+        'Sử dụng cho mục đích truyền thông.',
+        'Không yêu cầu chi trả thêm chi phí ngoài giải thưởng (nếu có).',
+      ],
       validation: {
         required: 'Vui lòng nhập trường này',
         email: 'Email chưa hợp lệ',
@@ -193,6 +215,17 @@ export const messages = {
       uploaded: 'Đã tải xong',
       pending: 'Chưa có',
       progress: 'Tiến độ {pct}%',
+      songTab: 'Bài {n}',
+      songTabUploaded: 'Bài {n} ✓',
+      songAlreadyUploaded: 'Đã nộp video cho bài này',
+      songReplaceHint: 'Nếu muốn thay video, nhấn nút bên dưới để nộp lại.',
+      songReplaceBtn: 'Thay video',
+      songUploadBtn: 'Tải lên',
+      songSubmitLinkBtn: 'Lưu link',
+      songUploading: 'Đang tải bài {n} lên Drive…',
+      songUploadDone: 'Bài {n} đã nộp thành công!',
+      songUploadCancel: 'Hủy',
+      contactSaveHint: 'Điền thông tin và tích vào ô đồng ý trước khi nộp bài.',
     },
     footer: {
       tagline:
@@ -200,6 +233,7 @@ export const messages = {
       contact: 'Liên hệ',
       youtube: 'Kênh YouTube Tiny Faith Songs',
       copyright: '© 2026 Tiny Faith Songs. Mọi quyền được bảo lưu.',
+      supportedBy: 'Website được thiết kế và hỗ trợ bởi',
       contactEmail: 'Tiny.faith2025@gmail.com',
     },
   },
@@ -360,6 +394,23 @@ export const messages = {
       linkPlaceholder: 'Paste a public YouTube or Google Drive link',
       linkHint: 'YouTube or public Google Drive links are accepted.',
       songLabel: 'Song #{n}',
+      lookup: {
+        noticeTitle:
+          'You can submit one video at a time. The system automatically saves progress by your phone number.',
+        noticeBody:
+          'Start by entering your phone number and check enrollment to identify new or returning submissions.',
+        check: 'Check progress',
+        checking: 'Checking...',
+        newUser: 'No record found for this phone yet. You can start a new submission.',
+        returningFound: 'Previous submission record found.',
+        returningHint:
+          'Returning profile loaded: contact details and completed songs have been restored automatically.',
+        newHint: 'New profile: please fill in details and submit at least one song.',
+        error: 'Could not check progress right now. Please try again.',
+        uploadedDone: '{count} songs were completed in earlier sessions',
+        allUploaded:
+          'All 6 songs are already submitted. If you need to update files, please contact the organizer.',
+      },
       consent:
         'I consent to my child joining the contest and allow Tiny Faith Songs to use the photos/videos according to the contest rules.',
       consentRequired: 'Please tick the consent box to submit.',
@@ -367,7 +418,12 @@ export const messages = {
       submitting: 'Submitting your entry…',
       submittingHint: 'Uploading videos to Google Drive — please don’t close this tab.',
       privacyNote:
-        'Your information is used solely for contest organization and will not be shared.',
+        'By joining, the parent or legal guardian agrees that Tiny Faith Songs may use the child’s video to:',
+      privacyNoteItems: [
+        'Repost it on YouTube and social media platforms.',
+        'Use it for communications and promotional purposes.',
+        'Do so without any additional payment beyond the contest prize, if any.',
+      ],
       validation: {
         required: 'This field is required',
         email: 'Invalid email address',
@@ -394,6 +450,17 @@ export const messages = {
       uploaded: 'Uploaded',
       pending: 'Pending',
       progress: '{pct}% complete',
+      songTab: 'Song {n}',
+      songTabUploaded: 'Song {n} ✓',
+      songAlreadyUploaded: 'Video submitted for this song',
+      songReplaceHint: 'To replace the video, click the button below to re-submit.',
+      songReplaceBtn: 'Replace video',
+      songUploadBtn: 'Upload',
+      songSubmitLinkBtn: 'Save link',
+      songUploading: 'Uploading song {n} to Drive…',
+      songUploadDone: 'Song {n} submitted successfully!',
+      songUploadCancel: 'Cancel',
+      contactSaveHint: 'Fill in your contact info and agree to the terms before submitting.',
     },
     footer: {
       tagline:
@@ -401,6 +468,7 @@ export const messages = {
       contact: 'Contact',
       youtube: 'Tiny Faith Songs YouTube Channel',
       copyright: '© 2026 Tiny Faith Songs. All rights reserved.',
+      supportedBy: 'Website designed and supported by',
       contactEmail: 'Tiny.faith2025@gmail.com',
     },
   },

@@ -1,13 +1,13 @@
 import './globals.css';
-import { Quicksand, Baloo_2 } from 'next/font/google';
+import { Nunito, Baloo_2 } from 'next/font/google';
 import { I18nProvider } from '@/lib/i18n-context';
 import { Toaster } from '@/components/ui/sonner';
 
-// Quicksand: friendly rounded sans-serif with full Vietnamese support — body
-const quicksand = Quicksand({
+// Nunito: rounder, fuller sans-serif with better small-size readability — body
+const nunito = Nunito({
   subsets: ['latin', 'latin-ext', 'vietnamese'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-quicksand',
+  variable: '--font-nunito',
   display: 'swap',
 });
 
@@ -30,8 +30,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="vi" className={`${quicksand.variable} ${baloo.variable}`}>
-      <body className="min-h-screen bg-background text-foreground">
+    <html lang="vi" suppressHydrationWarning className={`${nunito.variable} ${baloo.variable}`}>
+      <body suppressHydrationWarning className="min-h-screen bg-background text-foreground">
         <I18nProvider>
           {children}
           <Toaster />

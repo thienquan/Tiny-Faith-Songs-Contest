@@ -1,3 +1,4 @@
+import dynamic from 'next/dynamic';
 import { Navbar } from '@/components/sections/Navbar';
 import { Hero } from '@/components/sections/Hero';
 import { About } from '@/components/sections/About';
@@ -6,8 +7,12 @@ import { Prizes } from '@/components/sections/Prizes';
 import { HowTo } from '@/components/sections/HowTo';
 import { Criteria } from '@/components/sections/Criteria';
 import { Poster } from '@/components/sections/Poster';
-import { RegistrationForm } from '@/components/sections/RegistrationForm';
 import { Footer } from '@/components/sections/Footer';
+
+const RegistrationForm = dynamic(
+  () => import('@/components/sections/RegistrationForm').then((mod) => mod.RegistrationForm),
+  { ssr: false },
+);
 
 export default function Page() {
   return (

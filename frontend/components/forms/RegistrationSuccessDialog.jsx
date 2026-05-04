@@ -24,7 +24,7 @@ export function RegistrationSuccessDialog({ result, onClose, t }) {
         </DialogHeader>
         {result?.folder_url && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-semibold text-slate-700 mb-1">{t('form.success.folderLabel')}</p>
+            <p className="mb-1 text-sm font-semibold text-slate-800">{t('form.success.folderLabel')}</p>
             <a
               href={result.folder_url}
               target="_blank"
@@ -36,7 +36,7 @@ export function RegistrationSuccessDialog({ result, onClose, t }) {
             </a>
           </div>
         )}
-        <p className="text-sm text-slate-600 leading-relaxed">{t('form.success.nextSteps')}</p>
+        <p className="text-base text-slate-700 leading-relaxed">{t('form.success.nextSteps')}</p>
         <DialogFooter>
           <Button type="button" onClick={onClose} data-testid="registration-success-close-button">
             {t('form.success.close')}

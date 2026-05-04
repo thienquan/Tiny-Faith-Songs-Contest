@@ -35,7 +35,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
 
 # ---------- Config ----------
-SERVICE_ACCOUNT_FILE = "/app/credentials/tiny-faith-songs-contest-873c0e89fa85.json"
+SERVICE_ACCOUNT_FILE = "/app/credentials/tiny-faith-songs-contest-1e944b6e82cb.json"
 SHARED_DRIVE_FOLDER_ID = "121rMtc6bwqBBARkwlpTch71WG1ESRVKN"
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 

@@ -77,7 +77,7 @@ function RobotMascot({ alt }) {
           alt={alt}
           fill
           sizes="(max-width: 1024px) 224px, 256px"
-          className="object-contain p-3"
+          className="object-cover"
           priority={false}
         />
       </div>
