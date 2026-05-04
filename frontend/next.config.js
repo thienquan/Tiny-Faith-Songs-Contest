@@ -26,10 +26,17 @@ const nextConfig = {
   async rewrites() {
     const backendBaseUrl = process.env.BACKEND_BASE_URL || 'http://127.0.0.1:8001';
     return [
+      // Backend API proxy
       {
         source: '/api/:path*',
         destination: `${backendBaseUrl}/api/:path*`,
       },
+      // Locale prefix rewrites — URL stays /vi but content served from /
+      // Must be AFTER api rewrite so /vi/api/... never conflicts
+      { source: '/vi', destination: '/' },
+      { source: '/vi/:path*', destination: '/:path*' },
+      { source: '/en', destination: '/' },
+      { source: '/en/:path*', destination: '/:path*' },
     ];
   },
 };
