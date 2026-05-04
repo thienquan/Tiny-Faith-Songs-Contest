@@ -215,13 +215,20 @@ def _render_html_body(payload: dict) -> str:
         else "🔁 Bổ sung bài thi (cập nhật)"
     )
     banner_color = "#0369A1" if is_new else "#9A3412"
+    action_word = "tạo" if is_new else "cập nhật"
+    song_label = "đã nộp" if is_new else "thêm trong lần cập nhật này"
+    phone_extra = (
+        f' <span style="color:#64748b">(nhập: {phone_raw})</span>'
+        if phone_raw and phone_raw != phone
+        else ''
+    )
 
     return f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 720px; margin: 0 auto; color: #0f172a;">
       <h2 style="color:{banner_color};">{banner_text} — Tiny Faith Songs</h2>
-      <p style="margin:0 0 12px;">Bài dự thi vừa được {('tạo' if is_new else 'cập nhật')} với thông tin sau:</p>
+      <p style="margin:0 0 12px;">Bài dự thi vừa được {action_word} với thông tin sau:</p>
       <table style="border-collapse: collapse; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
-        <tr><td style="padding:6px 10px; font-weight:600;">Số điện thoại</td><td style="padding:6px 10px; font-family: ui-monospace, monospace;">{phone}{f' <span style=\"color:#64748b\">(nhập: {phone_raw})</span>' if phone_raw and phone_raw != phone else ''}</td></tr>
+        <tr><td style="padding:6px 10px; font-weight:600;">Số điện thoại</td><td style="padding:6px 10px; font-family: ui-monospace, monospace;">{phone}{phone_extra}</td></tr>
         <tr><td style="padding:6px 10px; font-weight:600;">Tên bé</td><td style="padding:6px 10px;">{child}</td></tr>
         <tr><td style="padding:6px 10px; font-weight:600;">Phụ huynh</td><td style="padding:6px 10px;">{parent}</td></tr>
         <tr><td style="padding:6px 10px; font-weight:600;">Email phụ huynh</td><td style="padding:6px 10px;">{parent_email}</td></tr>
@@ -229,7 +236,7 @@ def _render_html_body(payload: dict) -> str:
           <td style="padding:6px 10px;"><a href="{folder_url}" target="_blank" rel="noopener">{folder_name}</a></td>
         </tr>
       </table>
-      <h3 style="margin-top:24px; color:#0f172a;">📂 Bài hát {'đã nộp' if is_new else 'thêm trong lần cập nhật này'} ({len(actionable)})</h3>
+      <h3 style="margin-top:24px; color:#0f172a;">📂 Bài hát {song_label} ({len(actionable)})</h3>
       <table style="border-collapse: collapse; width:100%; background:#fff; border:1px solid #e2e8f0; border-radius:8px;">
         <thead style="background:#e0f2fe; color:#0c4a6e;">
           <tr><th style="text-align:left; padding:8px 10px;">#</th><th style="text-align:left; padding:8px 10px;">Loại</th><th style="text-align:left; padding:8px 10px;">Thông tin</th><th style="text-align:left; padding:8px 10px;">Liên kết</th></tr>

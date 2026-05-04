@@ -26,14 +26,15 @@ function StepCard({ index, title, desc }) {
 }
 
 function CharacterFrame({ src, alt, tone, size = 'lg', testId }) {
-  const widthClass = size === 'sm' ? 'w-32 aspect-[3/4]' : 'w-44 aspect-[3/4]';
+  const widthClass = size === 'sm' ? 'w-28 sm:w-32 aspect-[3/4]' : 'w-44 aspect-[2/3]';
   const borderClass = tone === 'pink' ? 'border-bubblegum-200' : 'border-sky-200';
   const sizes = size === 'sm' ? '128px' : '176px';
+  const imageClass = size === 'sm' ? 'object-cover object-top' : 'object-cover object-center';
   return (
     <div
-      className={`relative ${widthClass} rounded-3xl overflow-hidden ${borderClass} bg-white shadow-soft`}
+      className={`relative ${widthClass} rounded-3xl overflow-hidden ${borderClass}`}
     >
-      <Image src={src} alt={alt} fill sizes={sizes} className="object-cover object-center" data-testid={testId} />
+      <Image src={src} alt={alt} fill sizes={sizes} className={imageClass} data-testid={testId} />
     </div>
   );
 }
@@ -120,7 +121,7 @@ export function HowTo() {
         <div className="grid gap-6 lg:grid-cols-12 items-start">
           <div className="hidden lg:flex lg:col-span-2 justify-center">
             <CharacterFrame
-              src="/boy-character-tony.jpg"
+              src="/boy-character-tony.png"
               alt={t('howTo.tonyAlt')}
               tone="sky"
               testId="how-to-tony-image"
@@ -131,7 +132,7 @@ export function HowTo() {
           </div>
           <div className="hidden lg:flex lg:col-span-2 justify-center">
             <CharacterFrame
-              src="/girl-character-windy.jpg"
+              src="/girl-character-windy.png"
               alt={t('howTo.windyAlt')}
               tone="pink"
               testId="how-to-windy-image"
@@ -140,9 +141,9 @@ export function HowTo() {
         </div>
 
         {/* Mobile characters row */}
-        <div className="mt-8 flex justify-center gap-4 lg:hidden">
-          <CharacterFrame src="/boy-character-tony.jpg" alt={t('howTo.tonyAlt')} tone="sky" size="sm" />
-          <CharacterFrame src="/girl-character-windy.jpg" alt={t('howTo.windyAlt')} tone="pink" size="sm" />
+        <div className="mt-8 flex justify-center gap-3 sm:gap-4 lg:hidden">
+          <CharacterFrame src="/boy-character-tony.png" alt={t('howTo.tonyAlt')} tone="sky" size="sm" />
+          <CharacterFrame src="/girl-character-windy.png" alt={t('howTo.windyAlt')} tone="pink" size="sm" />
         </div>
 
         <div className="mt-12 grid gap-4 lg:grid-cols-2">

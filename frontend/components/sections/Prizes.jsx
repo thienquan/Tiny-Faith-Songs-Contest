@@ -73,7 +73,7 @@ function RobotMascot({ alt }) {
       />
       <div className="relative h-full w-full rounded-[2rem] overflow-hidden bg-gradient-to-br from-sky-50 via-white to-bubblegum-50 border border-sky-200 shadow-pop">
         <Image
-          src="/robot-mascot.jpg"
+          src="/robot-mascot.png"
           alt={alt}
           fill
           sizes="(max-width: 1024px) 224px, 256px"
