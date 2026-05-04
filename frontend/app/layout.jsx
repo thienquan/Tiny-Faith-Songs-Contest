@@ -30,7 +30,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="vi" suppressHydrationWarning className={`${nunito.variable} ${baloo.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${nunito.variable} ${baloo.variable}`}>
       <body suppressHydrationWarning className="min-h-screen bg-background text-foreground">
         <I18nProvider>
           {children}

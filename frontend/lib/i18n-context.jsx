@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { messages } from '@/messages/dictionary';
 
 const SUPPORTED_LOCALES = ['vi', 'en'];
-const DEFAULT_LOCALE = 'vi';
+const DEFAULT_LOCALE = 'en';
 const STORAGE_KEY = 'tfs-locale';
 
 const I18nContext = createContext({
@@ -29,6 +29,21 @@ function readDictPath(dict, key) {
   }, dict);
 }
 
+function detectLocaleFromPath() {
+  try {
+    if (typeof window === 'undefined') return null;
+    const pathname = window.location.pathname;
+    const match = pathname.match(/^\/(vi|en)(?:\/|$)/i);
+    if (match) return match[1].toLowerCase();
+    // Check URL query param ?locale=vi or ?lang=vi
+    const params = new URLSearchParams(window.location.search);
+    const localeParam = params.get('locale') || params.get('lang');
+    return SUPPORTED_LOCALES.includes(localeParam) ? localeParam : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 function readSavedLocale() {
   try {
     if (typeof window === 'undefined') return null;
@@ -39,6 +54,19 @@ function readSavedLocale() {
     if (typeof console !== 'undefined') {
       console.warn('[i18n] Could not read locale from storage:', err);
     }
+    return null;
+  }
+}
+
+function detectLocaleFromBrowser() {
+  try {
+    if (typeof window === 'undefined') return null;
+    const langs = Array.isArray(window.navigator.languages)
+      ? window.navigator.languages
+      : [window.navigator.language].filter(Boolean);
+    const hasVietnamese = langs.some((lang) => String(lang).toLowerCase().startsWith('vi'));
+    return hasVietnamese ? 'vi' : 'en';
+  } catch (err) {
     return null;
   }
 }
@@ -56,6 +84,27 @@ function persistLocale(next) {
   }
 }
 
+function removeLocalePrefix(pathname) {
+  const stripped = pathname.replace(/^\/(vi|en)(?=\/|$)/i, '');
+  return stripped || '/';
+}
+
+function syncUrlWithLocale(nextLocale) {
+  try {
+    if (typeof window === 'undefined') return;
+    const { pathname, search, hash } = window.location;
+    const basePath = removeLocalePrefix(pathname);
+    const targetPath = nextLocale === 'vi' ? `/vi${basePath === '/' ? '' : basePath}` : basePath;
+    const targetUrl = `${targetPath}${search}${hash}`;
+    const currentUrl = `${pathname}${search}${hash}`;
+    if (targetUrl !== currentUrl) {
+      window.history.replaceState(window.history.state, '', targetUrl);
+    }
+  } catch (err) {
+    // Ignore URL sync failures in non-browser contexts.
+  }
+}
+
 export function I18nProvider({ children }) {
   const [locale, setLocaleState] = useState(DEFAULT_LOCALE);
   const [hydrated, setHydrated] = useState(false);
@@ -64,8 +113,15 @@ export function I18nProvider({ children }) {
   // array is intentional — this is a mount-only effect.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    const pathLocale = detectLocaleFromPath();
     const saved = readSavedLocale();
-    if (saved) setLocaleState(saved);
+    const browserLocale = detectLocaleFromBrowser();
+
+    // Priority: explicit URL locale > saved preference > browser language.
+    const nextLocale = pathLocale || saved || browserLocale || DEFAULT_LOCALE;
+    setLocaleState(nextLocale);
+    persistLocale(nextLocale);
+    syncUrlWithLocale(nextLocale);
     setHydrated(true);
   }, []);
 
@@ -75,6 +131,7 @@ export function I18nProvider({ children }) {
     if (!SUPPORTED_LOCALES.includes(next)) return;
     setLocaleState(next);
     persistLocale(next);
+    syncUrlWithLocale(next);
   }, []);
 
   const t = useCallback(
